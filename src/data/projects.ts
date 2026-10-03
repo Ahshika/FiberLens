@@ -280,5 +280,12 @@ export async function saveTrackRow(name: string, pts: any[]) {
   recordChange('tracks', id, 'put', open.projectId);
 }
 
-gpsController.persistence = { saveCalibration: saveCalibrationRow, saveTrack: saveTrackRow };
+export async function deleteCalibrationRow() {
+  if (!open) return;
+  await db.calibrations.where('drawingId').equals(open.drawingId).delete();
+  await db.drawings.update(open.drawingId, { calibrationId: undefined });
+  await audit('calibration.delete', open.drawingId, undefined, open.projectId);
+}
+
+gpsController.persistence = { saveCalibration: saveCalibrationRow, saveTrack: saveTrackRow, deleteCalibration: deleteCalibrationRow };
 app.saveVersionQuick = () => { saveVersion().catch((e) => useApp.getState().toast(e.message, 'error')); };

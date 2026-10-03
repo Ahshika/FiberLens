@@ -9,6 +9,7 @@ import { CanvasControls } from './CanvasControls';
 import { GpsPill } from './gps/GpsPill';
 import { InfoCard } from './InfoCard';
 import { fmt } from './common';
+import './panels/register';
 
 const DOCK: { id: PanelId; label: string; icon: string }[] = [
   { id: 'layers', label: 'Layers', icon: 'layers' },

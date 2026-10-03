@@ -10,6 +10,7 @@ import type { Vec2 } from '../cad/model/types';
 export interface GpsPersistence {
   saveCalibration?: (c: Calibration) => Promise<void> | void;
   saveTrack?: (name: string, pts: TrackPoint[]) => Promise<void> | void;
+  deleteCalibration?: () => Promise<void> | void;
 }
 
 /**
@@ -91,6 +92,7 @@ class GpsController {
     st.set({ calibration: cal, calibrated: isUsable(cal) });
     if (st.fix) this.handleFix(st.fix);
     if (cal && persist) this.persistence.saveCalibration?.(cal);
+    if (!cal && persist) this.persistence.deleteCalibration?.();
     app.view?.invalidateOverlay();
   }
 

@@ -1,0 +1,23 @@
+import { registerPanel } from './PanelHost';
+import { LayersPanel } from './LayersPanel';
+import { PropertiesPanel } from './PropertiesPanel';
+import { DrawPanel, EditPanel, TextPanel, MeasurePanel } from './ToolPanels';
+import { SearchPanel } from './SearchPanel';
+import { ExportPanel } from './ExportPanel';
+import { ProjectPanel, VersionsPanel, SettingsPanel, MorePanel } from './ProjectPanels';
+import { GpsPanel, CalibrationPanel } from '../gps/GpsPanels';
+
+registerPanel('layers', { title: 'Layer Manager', component: LayersPanel, tall: true });
+registerPanel('props', { title: 'Properties', component: PropertiesPanel, tall: true });
+registerPanel('draw', { title: 'Draw', component: DrawPanel });
+registerPanel('edit', { title: 'Modify', component: EditPanel });
+registerPanel('text', { title: 'Text', component: TextPanel });
+registerPanel('measure', { title: 'Measure', component: MeasurePanel });
+registerPanel('search', { title: 'Search', component: SearchPanel, tall: true });
+registerPanel('export', { title: 'Export', component: ExportPanel });
+registerPanel('project', { title: 'Project', component: ProjectPanel, tall: true });
+registerPanel('versions', { title: 'Versions', component: VersionsPanel, tall: true });
+registerPanel('settings', { title: 'Settings', component: SettingsPanel, tall: true });
+registerPanel('more', { title: 'More', component: MorePanel });
+registerPanel('gps', { title: 'GPS', component: GpsPanel, tall: true });
+registerPanel('calib', { title: 'Calibration Wizard', component: CalibrationPanel, tall: true });
