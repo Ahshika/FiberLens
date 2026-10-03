@@ -16,6 +16,7 @@ import { ask, confirmDialog } from '../../app/dialogs';
 import { can } from '../../auth/session';
 import { downloadText } from '../../reports/download';
 import { tracksToGpx } from '../../reports/geoExport';
+import { isPhone } from '../useDevice';
 import { useT } from '../../app/i18n';
 
 /** One-shot point picker used by the calibration wizard and other modules. */
@@ -40,7 +41,9 @@ extraTools.push({ id: 'pickpoint', make: () => new PickPointTool() });
 
 export function pickPoint(prompt: string): Promise<Vec2> {
   return new Promise((resolve) => {
-    PickPointTool.pending = { prompt, cb: resolve };
+    // on phones the sheet would hide the drawing: minimise it while picking
+    if (isPhone()) useApp.getState().set({ sheet: 'min' });
+    PickPointTool.pending = { prompt, cb: (p) => { if (isPhone()) useApp.getState().set({ sheet: 'half' }); resolve(p); } };
     app.setTool('pickpoint');
   });
 }

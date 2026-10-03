@@ -12,6 +12,7 @@ export interface InteractionSettings {
 }
 
 type ToolFactory = () => Tool;
+type DownMode = 'none' | 'pan' | 'drag' | 'pinch' | 'precise';
 
 /**
  * Routes pointer/keyboard input to the active tool and drives camera gestures
@@ -21,7 +22,7 @@ export class ToolManager {
   private factories = new Map<string, ToolFactory>();
   active: Tool | null = null;
   private pointers = new Map<number, { x: number; y: number; type: string }>();
-  private down: { ev: ToolEvent; x: number; y: number; t: number; button: number; moved: boolean; mode: 'none' | 'pan' | 'drag' | 'pinch' } | null = null;
+  private down: { ev: ToolEvent; x: number; y: number; t: number; button: number; moved: boolean; mode: DownMode } | null = null;
   private pinch: { d: number; cx: number; cy: number } | null = null;
   private longPressTimer: any = 0;
   private longPressArmed = false;
@@ -31,6 +32,9 @@ export class ToolManager {
   onCursor: ((p: Vec2) => void) | null = null;
   onToolChange: ((t: Tool | null) => void) | null = null;
   lastPointerType = 'mouse';
+  /** touch precision mode (long-press in drawing tools): cursor above the finger + loupe */
+  preciseEv: ToolEvent | null = null;
+  static PRECISE_OFFSET = 80;
 
   constructor(
     public view: CadView,
@@ -53,6 +57,7 @@ export class ToolManager {
       this.active?.overlay(ctx, cam);
       const s = this.lastSnap;
       if (s) { const p = cam.worldToScreen(s.p.x, s.p.y); drawSnapMarker(ctx, p.x, p.y, s.kind); }
+      if (this.preciseEv) this.drawLoupe(ctx, cam);
       // crosshair for mouse
       if (this.lastEvent && this.mouseInside && this.lastPointerType === 'mouse' && this.active && this.active.id !== 'select') {
         const p = this.lastSnap ? cam.worldToScreen(this.lastSnap.p.x, this.lastSnap.p.y) : { x: this.lastEvent.sx, y: this.lastEvent.sy };
@@ -65,6 +70,36 @@ export class ToolManager {
         ctx.restore();
       }
     }, 50);
+  }
+
+  /** magnifier for touch precision placement */
+  private drawLoupe(ctx: CanvasRenderingContext2D, cam: import('../render/camera').Camera) {
+    const ev = this.preciseEv!;
+    const target = this.lastSnap ? cam.worldToScreen(this.lastSnap.p.x, this.lastSnap.p.y) : { x: ev.sx, y: ev.sy };
+    const R = 70, zoom = 2.5, src = (R * 2) / zoom;
+    const left = target.x < cam.width / 2 && target.y < 220;
+    // keep the loupe clear of the command bar
+    const bar = this.el.parentElement?.querySelector('.promptbar .prompt') as HTMLElement | null;
+    const top = bar ? bar.getBoundingClientRect().bottom - this.el.getBoundingClientRect().top + 10 : 14;
+    const cx = left ? cam.width - R - 14 : R + 14, cy = top + R;
+    const dpr = cam.dpr;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.closePath();
+    ctx.fillStyle = this.view.opts.dark ? '#0d1117' : '#ffffff'; ctx.fill();
+    ctx.clip();
+    for (const c of [this.view.glCanvas, this.view.textCanvas]) {
+      try { ctx.drawImage(c, (target.x - src / 2) * dpr, (target.y - src / 2) * dpr, src * dpr, src * dpr, cx - R, cy - R, R * 2, R * 2); } catch { /* ignore */ }
+    }
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = this.lastSnap ? '#ffd400' : '#2ea8ff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#ff3b6b';
+    ctx.beginPath(); ctx.moveTo(cx - 14, cy); ctx.lineTo(cx + 14, cy); ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy + 14); ctx.stroke();
+    // cursor above the finger
+    ctx.beginPath(); ctx.arc(target.x, target.y, 9, 0, Math.PI * 2); ctx.moveTo(target.x - 18, target.y); ctx.lineTo(target.x + 18, target.y); ctx.moveTo(target.x, target.y - 18); ctx.lineTo(target.x, target.y + 18); ctx.stroke();
+    if (this.lastSnap) { ctx.fillStyle = '#ffd400'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center'; ctx.fillText(this.lastSnap.kind.toUpperCase(), cx, cy + R - 10); }
+    ctx.restore();
   }
 
   register(id: string, f: ToolFactory) { this.factories.set(id, f); }
@@ -86,9 +121,9 @@ export class ToolManager {
 
   get doc(): CadDoc | null { return this.view.doc; }
 
-  private makeEvent(e: PointerEvent | MouseEvent, snap = true): ToolEvent {
+  private makeEvent(e: PointerEvent | MouseEvent, snap = true, offsetY = 0): ToolEvent {
     const r = this.el.getBoundingClientRect();
-    const sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const sx = e.clientX - r.left, sy = e.clientY - r.top - offsetY;
     const raw = this.view.cam.screenToWorld(sx, sy);
     let p = raw;
     let s: SnapResult | null = null;
@@ -107,7 +142,7 @@ export class ToolManager {
   }
 
   private onDown = (e: PointerEvent) => {
-    this.el.setPointerCapture(e.pointerId);
+    try { this.el.setPointerCapture(e.pointerId); } catch { /* synthetic or already released pointer */ }
     this.lastPointerType = e.pointerType;
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     if (this.pointers.size === 2) {
@@ -123,6 +158,18 @@ export class ToolManager {
     this.down = { ev, x: e.clientX, y: e.clientY, t: performance.now(), button: e.button, moved: false, mode: 'none' };
     if (e.button === 1 || e.button === 2 || this.view.layout) { this.down.mode = 'pan'; return; }
     this.active?.down(ev);
+    if (e.pointerType === 'touch' && this.active && this.active.id !== 'select' && !this.active.wantsDrag) {
+      this.longPressTimer = setTimeout(() => {
+        if (this.down && !this.down.moved && this.pointers.size === 1) {
+          this.down.mode = 'precise';
+          navigator.vibrate?.(15);
+          this.preciseEv = this.makeEvent(e, true, ToolManager.PRECISE_OFFSET);
+          this.lastSnap = this.preciseEv.snap;
+          this.active?.move(this.preciseEv);
+          this.view.invalidateOverlay();
+        }
+      }, 300);
+    }
     if (e.pointerType === 'touch' && this.active?.id === 'select') {
       this.longPressArmed = false;
       this.longPressTimer = setTimeout(() => {
@@ -145,6 +192,14 @@ export class ToolManager {
       if (this.pinch.d > 0 && d > 0) this.view.cam.zoomAt(cx - r.left, cy - r.top, d / this.pinch.d);
       this.pinch = { d, cx, cy };
       this.view.viewChanged();
+      return;
+    }
+    if (this.down?.mode === 'precise') {
+      const pe = this.makeEvent(e, true, ToolManager.PRECISE_OFFSET);
+      this.preciseEv = pe; this.lastEvent = pe; this.lastSnap = pe.snap;
+      this.onCursor?.(pe.p);
+      this.active?.move(pe);
+      this.view.invalidateOverlay();
       return;
     }
     const ev = this.makeEvent(e, !this.down || this.down.mode === 'none' || this.down.mode === 'drag');
@@ -188,6 +243,13 @@ export class ToolManager {
     const dn = this.down;
     this.down = null;
     if (!dn) return;
+    if (dn.mode === 'precise') {
+      const pe = this.makeEvent(e, true, ToolManager.PRECISE_OFFSET);
+      this.preciseEv = null;
+      this.active?.click(pe);
+      this.view.invalidateOverlay();
+      return;
+    }
     const ev = this.makeEvent(e, dn.mode !== 'pan');
     if (dn.mode === 'pan') {
       if (!dn.moved && dn.button === 2) this.active?.enter();
@@ -205,6 +267,7 @@ export class ToolManager {
     this.pointers.delete(e.pointerId);
     this.pinch = null;
     this.down = null;
+    this.preciseEv = null;
   };
 
   private onWheel = (e: WheelEvent) => {

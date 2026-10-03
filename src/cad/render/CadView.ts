@@ -60,10 +60,20 @@ export class CadView {
 
   get background() { return this.opts.dark ? 0x0d1117 : 0xffffff; }
 
+  /** true once the user (or a feature) moved the camera; until then resizes re-fit the drawing */
+  userMoved = false;
+  private autoFitting = false;
+
   resize() {
     const r = this.host.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const changed = Math.abs(r.width - this.cam.width) > 8 || Math.abs(r.height - this.cam.height) > 8;
     this.cam.setSize(Math.max(1, r.width), Math.max(1, r.height), dpr);
+    if (changed && !this.userMoved && this.doc && !this.layout && r.width > 10 && r.height > 10) {
+      this.autoFitting = true;
+      this.fitExtents();
+      this.autoFitting = false;
+    }
     for (const c of [this.overlayCanvas]) {
       c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
     }
@@ -87,7 +97,7 @@ export class CadView {
         if (this.scene) for (const c of this.scene.chunks.values()) if (!c.ids.size && c.gpu) this.gl.releaseChunk(c);
         this.invalidate();
       });
-      if (fit) this.fitExtents();
+      if (fit) { this.autoFitting = true; this.fitExtents(); this.autoFitting = false; this.userMoved = false; }
     }
     this.invalidate();
   }
@@ -142,6 +152,7 @@ export class CadView {
 
   /** called by interaction code whenever the camera moves */
   viewChanged() {
+    if (!this.autoFitting) this.userMoved = true;
     this.invalidate();
     this.interacting = true;
     clearTimeout(this.interactTimer);
@@ -151,8 +162,32 @@ export class CadView {
 
   fitExtents() {
     if (!this.doc) return;
-    const m = (this.layout?.doc ?? this.doc).drawing.meta;
-    this.cam.fit({ minX: m.extMin.x, minY: m.extMin.y, maxX: m.extMax.x, maxY: m.extMax.y });
+    const d = this.layout?.doc ?? this.doc;
+    const m = d.drawing.meta;
+    if (this.layout) {
+      this.cam.fit({ minX: m.extMin.x, minY: m.extMin.y, maxX: m.extMax.x, maxY: m.extMax.y });
+      this.viewChanged();
+      return;
+    }
+    // robust extents from live geometry (ignores stray objects far from the drawing)
+    const xs: number[] = [], ys: number[] = [];
+    const step = Math.max(1, Math.floor(d.size / 30000));
+    let i = 0;
+    for (const e of d.all()) {
+      if (i++ % step) continue;
+      if (!d.isVisible(e)) continue;
+      const b = d.box(e.id);
+      if (!b) continue;
+      xs.push((b.minX + b.maxX) / 2); ys.push((b.minY + b.maxY) / 2);
+    }
+    if (xs.length < 10) {
+      this.cam.fit({ minX: m.extMin.x, minY: m.extMin.y, maxX: m.extMax.x, maxY: m.extMax.y });
+    } else {
+      xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
+      const q = (a: number[], f: number) => a[Math.floor((a.length - 1) * f)];
+      const x1 = q(xs, 0.01), x2 = q(xs, 0.99), y1 = q(ys, 0.01), y2 = q(ys, 0.99);
+      this.cam.fit({ minX: x1, minY: y1, maxX: x2, maxY: y2 }, 0.08);
+    }
     this.viewChanged();
   }
 

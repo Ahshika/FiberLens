@@ -41,6 +41,7 @@ const AR: Record<string, string> = {
   Move: 'نقل', Copy: 'نسخ', Rotate: 'تدوير', Mirror: 'انعكاس', Scale: 'تحجيم', Stretch: 'مط', Trim: 'قص', Extend: 'مد', Offset: 'إزاحة',
   Fillet: 'تقويس', Chamfer: 'شطف', Explode: 'تفكيك', Join: 'دمج', Break: 'كسر', 'Edit Polyline': 'تعديل الخط المتعدد', 'Match Props': 'مطابقة الخصائص',
   'Copy (clip)': 'نسخ للحافظة', Paste: 'لصق',
+  'Tap to place · long-press for precision loupe · 2 fingers to zoom': 'اضغط لوضع النقطة · ضغطة مطولة للعدسة الدقيقة · إصبعين للتكبير',
 };
 
 export const useLang = create<{ lang: Lang; set: (l: Lang) => void }>((set) => ({

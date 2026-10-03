@@ -18,6 +18,7 @@ import type { FtthObjectRow, CableRow, CoreRow, SplitterRow, FtthKind } from '..
 import { db } from '../../data/db';
 import { ObjectMediaSection } from '../field/ObjectMedia';
 import { SpliceEditor } from './SpliceEditor';
+import { isPhone } from '../useDevice';
 import { useT } from '../../app/i18n';
 
 const toast = (m: string, k: 'info' | 'error' | 'success' = 'info') => useApp.getState().toast(m, k);
@@ -101,9 +102,9 @@ function Overview() {
       {s.objects.size === 0 && <div className="card small" style={{ marginBottom: 10 }}>No smart objects yet. Use <b>Detect</b> to recognise FAT/FDT/closures/cables from the DWG layers & blocks, or place them manually.</div>}
       <div className="section">Tools</div>
       <div className="tool-grid">
-        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-place')}><Icon name="pin" />{tr('Place object')}</button>
-        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-cable')}><Icon name="cable" />{tr('Draw cable')}</button>
-        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-link')}><Icon name="join" />{tr('Link CAD → FTTH')}</button>
+        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => { app.setTool('ftth-place'); if (isPhone()) useApp.getState().set({ panel: null }); }}><Icon name="pin" />{tr('Place object')}</button>
+        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => { app.setTool('ftth-cable'); if (isPhone()) useApp.getState().set({ panel: null }); }}><Icon name="cable" />{tr('Draw cable')}</button>
+        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => { app.setTool('ftth-link'); if (isPhone()) useApp.getState().set({ panel: null }); }}><Icon name="join" />{tr('Link CAD → FTTH')}</button>
         <button className="tool-btn" onClick={() => useFtthUi.getState().set({ tab: 'detect' })}><Icon name="search" />{tr('Detect')}</button>
         <button className="tool-btn" onClick={() => useApp.getState().set({ panel: 'reports' })}><Icon name="boq" />{tr('BOQ & reports')}</button>
         <button className="tool-btn" onClick={() => useApp.getState().set({ panel: 'qr' })}><Icon name="qr" />{tr('QR codes')}</button>

@@ -38,6 +38,8 @@ export interface AppState {
   dirty: boolean;
   infoEntity: number | null;
   stats: string;
+  /** phone bottom-sheet size */
+  sheet: 'half' | 'full' | 'min';
   set: (p: Partial<AppState>) => void;
   toast: (text: string, kind?: Toast['kind']) => void;
 }
@@ -76,6 +78,7 @@ export const useApp = create<AppState>((set, get) => ({
   dirty: false,
   infoEntity: null,
   stats: '',
+  sheet: 'half',
   set: (p) => set(p),
   toast: (text, kind = 'info') => {
     const id = ++toastSeq;

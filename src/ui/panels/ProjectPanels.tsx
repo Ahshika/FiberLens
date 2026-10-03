@@ -14,6 +14,7 @@ import type { Drawing } from '../../cad/model/types';
 import { exportBackup, importBackup } from '../../data/backup';
 import { useDialog } from '../../app/dialogs';
 import { XrefSection } from './XrefSection';
+import { isPhone } from '../useDevice';
 import { useT, useLang } from '../../app/i18n';
 
 export function ProjectPanel() {
@@ -201,6 +202,15 @@ export function SettingsPanel() {
   );
 }
 
+const MORE_FIELD: { id: PanelId; label: string; icon: string }[] = [
+  { id: 'text', label: 'Text', icon: 'text' },
+  { id: 'search', label: 'Search', icon: 'search' },
+  { id: 'measure', label: 'Measure', icon: 'measure' },
+  { id: 'survey', label: 'Survey', icon: 'survey' },
+  { id: 'notes', label: 'Notes', icon: 'note' },
+  { id: 'photos', label: 'Photos', icon: 'photo' },
+];
+
 const MORE: { id: PanelId; label: string; icon: string }[] = [
   { id: 'project', label: 'Project', icon: 'folder' },
   { id: 'versions', label: 'Versions', icon: 'version' },
@@ -220,7 +230,7 @@ export function MorePanel() {
   const t = useT();
   return (
     <div className="tool-grid">
-      {MORE.map((m) => <button key={m.id} className="tool-btn" onClick={() => useApp.getState().set({ panel: m.id })}><Icon name={m.icon} />{t(m.label)}</button>)}
+      {[...(isPhone() ? MORE_FIELD : []), ...MORE].map((m) => <button key={m.id} className="tool-btn" onClick={() => useApp.getState().set({ panel: m.id })}><Icon name={m.icon} />{t(m.label)}</button>)}
     </div>
   );
 }

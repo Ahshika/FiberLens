@@ -205,3 +205,41 @@ table.tbl tr:hover td { background: var(--bg3); }
 .color-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .color-row .swatch { width: 24px; height: 24px; }
 .color-row .swatch.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- phone ---------- */
+.sheet-handle, .sheet-toggle { display: none; }
+.dock.phone button { flex: 1 1 0; min-width: 0; }
+.loupe-hint { position: absolute; left: 50%; transform: translateX(-50%); top: 10px; z-index: 13; }
+@media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
+  .sheet-handle { display: flex; justify-content: center; padding: 6px 0 0; cursor: pointer; }
+  .sheet-handle span { width: 40px; height: 5px; border-radius: 3px; background: var(--bg4); }
+  .sheet-toggle { display: inline-flex; font-size: 18px; }
+  .panel.sheet-full { height: calc(100% - 6px); }
+  .panel.sheet-min { height: 104px; }
+  .panel.sheet-min .panel-body { display: none; }
+  .panel-head { padding-top: 2px; }
+  .panel-body { padding-bottom: calc(16px + var(--safe-b)); }
+  .topbar { gap: 4px; padding-left: 6px; padding-right: 4px; }
+  .topbar .icon-btn { min-width: 36px; padding: 0 4px; }
+  .gps-pill { padding: 4px 8px; }
+  .brand .pname { max-width: 30vw; font-size: 13px; }
+  .mode-badge { font-size: 10px; padding: 2px 6px; }
+  .chips { bottom: 10px; gap: 4px; max-width: calc(100% - 80px); }
+  .chip { padding: 5px 8px; font-size: 11px; }
+  .fab { width: 48px; height: 48px; }
+  .prompt { padding: 6px 8px; font-size: 12px; gap: 6px; }
+  .prompt input { width: 100px; }
+  .info-card { top: 52px; max-height: calc(100% - 180px); }
+  .nav-hud { top: auto; bottom: 110px; max-width: calc(100% - 24px); font-size: 13px; }
+  .toasts { bottom: calc(var(--dock) + 70px + var(--safe-b)); }
+  .tool-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+  .modal { padding: 14px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  :root { --top: 42px; --dock: 50px; }
+  .panel { position: absolute; top: 0; bottom: 0; right: 0; left: auto; width: min(380px, 55vw); height: auto !important; border-radius: 0; border-top: 0; border-left: 1px solid var(--line); }
+  .panel.sheet-min .panel-body { display: block; }
+  .sheet-handle, .sheet-toggle { display: none !important; }
+  .dock button { font-size: 10px; }
+  .dock button svg { width: 19px; height: 19px; }
+}

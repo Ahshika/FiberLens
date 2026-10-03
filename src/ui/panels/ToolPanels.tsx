@@ -6,6 +6,7 @@ import { ColorPicker, LINEWEIGHTS, lwLabel, useDocRev } from '../common';
 import { TOOL_INFO } from '../../cad/tools/registry';
 import { useMeasure } from '../../cad/tools/measureTools';
 import { can } from '../../auth/session';
+import { isPhone } from '../useDevice';
 import { useT } from '../../app/i18n';
 
 function ToolGrid({ group }: { group: 'draw' | 'edit' | 'text' | 'measure' }) {
@@ -16,7 +17,7 @@ function ToolGrid({ group }: { group: 'draw' | 'edit' | 'text' | 'measure' }) {
     <div className="tool-grid">
       {TOOL_INFO.filter((t) => t.group === group).map((t) => (
         <button key={t.id} className={`tool-btn ${toolId === t.id ? 'on' : ''}`} disabled={!allowed}
-          onClick={() => app.setTool(toolId === t.id ? 'select' : t.id)}>
+          onClick={() => { app.setTool(toolId === t.id ? 'select' : t.id); if (isPhone() && toolId !== t.id) useApp.getState().set({ panel: null }); }}>
           <Icon name={t.icon} />{tr(t.label)}
         </button>
       ))}

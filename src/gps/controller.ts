@@ -78,6 +78,7 @@ class GpsController {
     this.source = src;
     useGps.getState().set({ running: true, sourceId, error: null });
     this.startCompass();
+    this.keepAwake(true);
     await src.start((f) => this.handleFix(f), (e) => {
       useGps.getState().set({ error: e });
       useApp.getState().toast('GPS: ' + e, 'error');
@@ -88,6 +89,7 @@ class GpsController {
     this.source?.stop();
     this.source = null;
     this.stopCompass();
+    this.keepAwake(false);
     useGps.getState().set({ running: false, follow: false });
     if (useGps.getState().headingUp) this.setHeadingUp(false);
   }
@@ -128,6 +130,26 @@ class GpsController {
       else view.invalidateOverlay();
     }
     for (const l of this.fixListeners) l(f, cad);
+  }
+
+  private wakeLock: any = null;
+  private visHandler: (() => void) | null = null;
+  /** keep the screen on while GPS is running (field walking / navigation) */
+  private async keepAwake(on: boolean) {
+    const wl = (navigator as any).wakeLock;
+    if (!wl) return;
+    try {
+      if (on) {
+        this.wakeLock = await wl.request('screen');
+        if (!this.visHandler) {
+          this.visHandler = () => { if (document.visibilityState === 'visible' && useGps.getState().running) this.keepAwake(true); };
+          document.addEventListener('visibilitychange', this.visHandler);
+        }
+      } else {
+        await this.wakeLock?.release();
+        this.wakeLock = null;
+      }
+    } catch { /* not allowed (e.g. battery saver) */ }
   }
 
   private startCompass() {

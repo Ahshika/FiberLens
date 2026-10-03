@@ -13,8 +13,12 @@ import './panels/register';
 import { NavHud } from './ftth/integration';
 import { LayoutTabs } from './LayoutTabs';
 import { useT } from '../app/i18n';
+import { useIsPhone } from './useDevice';
 
-const DOCK: { id: PanelId; label: string; icon: string }[] = [
+/** phone: the 5 field essentials + More (everything else lives in the More grid) */
+const PHONE_DOCK: PanelId[] = ['layers', 'draw', 'edit', 'ftth', 'gps', 'more'];
+
+export const DOCK: { id: PanelId; label: string; icon: string }[] = [
   { id: 'layers', label: 'Layers', icon: 'layers' },
   { id: 'draw', label: 'Draw', icon: 'draw' },
   { id: 'edit', label: 'Edit', icon: 'edit' },
@@ -32,6 +36,7 @@ const DOCK: { id: PanelId; label: string; icon: string }[] = [
 function TopBar() {
   const s = useApp();
   const t = useT();
+  const phone = useIsPhone();
   return (
     <div className="topbar">
       <div className="brand" onClick={() => s.set({ panel: s.panel === 'project' ? null : 'project' })} title="Project">
@@ -48,6 +53,7 @@ function TopBar() {
         {s.cursor ? `X ${fmt(s.cursor.x, 3)}  Y ${fmt(s.cursor.y, 3)}` : ''}
       </div>
       <div className="spacer" />
+      {phone && <button className={`icon-btn ${s.panel === 'search' ? 'on' : ''}`} onClick={() => s.set({ panel: s.panel === 'search' ? null : 'search' })} title="Search"><Icon name="search" /></button>}
       <button className="icon-btn" disabled={!s.canUndo} onClick={() => app.undo()} title="Undo (Ctrl+Z)"><Icon name="undo" /></button>
       <button className="icon-btn" disabled={!s.canRedo} onClick={() => app.redo()} title="Redo (Ctrl+Y)"><Icon name="redo" /></button>
       <button className="icon-btn hide-sm" onClick={() => app.saveVersionQuick?.()} title="Save version"><Icon name="save" /></button>
@@ -62,8 +68,8 @@ export function CadScreen() {
   const t = useT();
   const panel = useApp((s) => s.panel);
   const set = useApp((s) => s.set);
-  const [moreOpen] = useState(false);
-  void moreOpen;
+  const phone = useIsPhone();
+  const dock = phone ? DOCK.filter((d) => PHONE_DOCK.includes(d.id)) : DOCK;
   return (
     <>
       <TopBar />
@@ -78,9 +84,9 @@ export function CadScreen() {
         </div>
         {panel && <PanelHost id={panel} onClose={() => set({ panel: null })} />}
       </div>
-      <div className="dock">
-        {DOCK.map((d) => (
-          <button key={d.id} className={panel === d.id ? 'on' : ''} onClick={() => set({ panel: panel === d.id ? null : d.id })}>
+      <div className={`dock ${phone ? 'phone' : ''}`}>
+        {dock.map((d) => (
+          <button key={d.id} className={panel === d.id ? 'on' : ''} onClick={() => set({ panel: panel === d.id ? null : d.id, sheet: 'half' })}>
             <Icon name={d.icon} />
             {t(d.label)}
           </button>

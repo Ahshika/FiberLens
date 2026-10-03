@@ -9,6 +9,7 @@ import { audit, useSession, require as requirePerm } from '../auth/session';
 import { gpsController } from '../gps/controller';
 import { solveCalibration, type Calibration } from '../geo/calibration';
 import { recordChange } from './sync';
+import { repairAttributes } from '../cad/io/repair';
 
 /** FTTH tables included in version snapshots and backups */
 export const FTTH_TABLES = ['ftthObjects', 'cables', 'cores', 'splitters', 'splices'] as const;
@@ -98,6 +99,7 @@ export async function openProject(projectId: string, drawingId?: string) {
   useApp.setState({ loading: `Opening ${row.name}…` });
   try {
     const drawing = unpackJson<Drawing>(row.snapshot);
+    repairAttributes(drawing); // projects imported before the attribute fix
     const original = row.originalFileId ? (await db.files.get(row.originalFileId))?.data ?? null : null;
     const journal = await db.journal.where('drawingId').equals(did).sortBy('seq');
     app.loadDrawing(drawing, { original, originalName: row.name });

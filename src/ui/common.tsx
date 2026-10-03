@@ -69,10 +69,16 @@ export function DialogHost() {
 }
 
 export function PanelFrame({ title, onClose, children, tall, actions }: { title: string; onClose: () => void; children: React.ReactNode; tall?: boolean; actions?: React.ReactNode }) {
+  // phone bottom sheet: half → full → minimised (tap the handle / title)
+  const size = useApp((s) => s.sheet);
+  const setSize = (v: 'half' | 'full' | 'min') => useApp.getState().set({ sheet: v });
+  const cycle = () => setSize(size === 'half' ? 'full' : size === 'full' ? 'min' : 'half');
   return (
-    <div className={`panel ${tall ? 'tall' : ''}`}>
+    <div className={`panel ${tall ? 'tall' : ''} sheet-${size}`}>
+      <div className="sheet-handle" onClick={cycle}><span /></div>
       <div className="panel-head">
-        <h3>{title}</h3>
+        <h3 onClick={cycle}>{title}</h3>
+        <button className="icon-btn sheet-toggle" onClick={cycle} title="Expand / collapse">{size === 'full' ? '▾' : '▴'}</button>
         {actions}
         <button className="icon-btn" onClick={onClose} title="Close"><Icon name="close" /></button>
       </div>

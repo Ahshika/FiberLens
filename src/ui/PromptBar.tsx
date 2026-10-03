@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../app/store';
 import { app } from '../app/controller';
 import { useT } from '../app/i18n';
+import { useIsPhone } from './useDevice';
 
 /** CAD-style command prompt: current tool, instruction, typed input and tool options. */
 export function PromptBar() {
@@ -10,6 +11,9 @@ export function PromptBar() {
   useApp((s) => s.toolRev);
   const [text, setText] = useState('');
   const t = useT();
+  const phone = useIsPhone();
+  const [kbd, setKbd] = useState(false);
+  const [hintCount] = useState(() => { try { const n = +(localStorage.getItem('fl.hint') ?? 0); localStorage.setItem('fl.hint', String(n + 1)); return n; } catch { return 0; } });
   const tool = app.tools?.active;
   if (!tool || toolId === 'select') return null;
   const opts = tool.options();
@@ -39,7 +43,8 @@ export function PromptBar() {
             )}
           </span>
         ))}
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="x,y | @dx,dy | len" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') tool.escape(); e.stopPropagation(); }} />
+        {phone && !kbd ? <button onClick={() => setKbd(true)} title="Type coordinates / values">⌨</button> : <input value={text} autoFocus={phone} onChange={(e) => setText(e.target.value)} placeholder="x,y | @dx,dy | len" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') tool.escape(); e.stopPropagation(); }} />}
+        {phone && hintCount < 4 && <span className="small muted" style={{ width: '100%' }}>{t('Tap to place · long-press for precision loupe · 2 fingers to zoom')}</span>}
         <button onClick={() => tool.enter()}>{t('Done')}</button>
         <button onClick={() => app.setTool('select')}>✕</button>
       </div>
