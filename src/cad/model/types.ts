@@ -219,7 +219,7 @@ export interface BlockDef {
   base: Vec2;
   entities: Entity[];
   /** attribute definitions (tag, prompt, default) */
-  attdefs?: { tag: string; prompt?: string; value: string }[];
+  attdefs?: { tag: string; prompt?: string; value: string; p?: Vec2; p2?: Vec2; h?: number; rot?: number; halign?: HAlign; valign?: VAlign }[];
   anonymous?: boolean;
   xref?: string;
 }

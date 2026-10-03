@@ -3,6 +3,7 @@ import { useApp } from '../app/store';
 import { Toasts, Loading, DialogHost } from './common';
 import { StartScreen } from './StartScreen';
 import { CadScreen } from './CadScreen';
+import { MediaViewer } from './field/ObjectMedia';
 
 export function App() {
   const screen = useApp((s) => s.screen);
@@ -13,6 +14,7 @@ export function App() {
       {screen === 'start' ? <StartScreen /> : <CadScreen />}
       <Toasts />
       <DialogHost />
+      <MediaViewer />
       <Loading />
     </div>
   );

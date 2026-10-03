@@ -10,6 +10,7 @@ import { GpsPill } from './gps/GpsPill';
 import { InfoCard } from './InfoCard';
 import { fmt } from './common';
 import './panels/register';
+import { NavHud } from './ftth/integration';
 
 const DOCK: { id: PanelId; label: string; icon: string }[] = [
   { id: 'layers', label: 'Layers', icon: 'layers' },
@@ -68,6 +69,7 @@ export function CadScreen() {
           <PromptBar />
           <CanvasControls />
           <InfoCard />
+          <NavHud />
         </div>
         {panel && <PanelHost id={panel} onClose={() => set({ panel: null })} />}
       </div>

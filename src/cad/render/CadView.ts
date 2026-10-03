@@ -124,8 +124,22 @@ export class CadView {
 
   zoomToEntities(ids: number[], minSize = 20) {
     if (!this.doc) return;
+    const boxes = ids.map((id) => this.doc!.box(id)).filter(Boolean) as BBox[];
     const b = emptyBox();
-    for (const id of ids) { const eb = this.doc.box(id); if (eb) boxUnion(b, eb); }
+    if (boxes.length > 4) {
+      // robust: ignore statistical outliers (stray geometry far from the rest)
+      const cx = boxes.map((x) => (x.minX + x.maxX) / 2).sort((p, q) => p - q);
+      const cy = boxes.map((x) => (x.minY + x.maxY) / 2).sort((p, q) => p - q);
+      const q = (a: number[], f: number) => a[Math.min(a.length - 1, Math.max(0, Math.floor((a.length - 1) * f)))];
+      const x1 = q(cx, 0.03), x2 = q(cx, 0.97), y1 = q(cy, 0.03), y2 = q(cy, 0.97);
+      const padX = (x2 - x1) * 0.5 + minSize, padY = (y2 - y1) * 0.5 + minSize;
+      for (const x of boxes) {
+        const mx = (x.minX + x.maxX) / 2, my = (x.minY + x.maxY) / 2;
+        if (mx < x1 - padX || mx > x2 + padX || my < y1 - padY || my > y2 + padY) continue;
+        // also clip individual huge boxes to the robust window
+        boxUnion(b, { minX: Math.max(x.minX, x1 - padX), minY: Math.max(x.minY, y1 - padY), maxX: Math.min(x.maxX, x2 + padX), maxY: Math.min(x.maxY, y2 + padY) });
+      }
+    } else for (const x of boxes) boxUnion(b, x);
     this.zoomToBox(b, minSize);
   }
 
