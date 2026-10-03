@@ -1,0 +1,46 @@
+{
+  "name": "fiberlens",
+  "version": "1.0.0",
+  "description": "FiberLens - Smart CAD + FTTH Field Engineering Platform",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@node-projects/acad-ts": "^3.2.0",
+    "dexie": "^4.4.6",
+    "earcut": "^3.2.4",
+    "fflate": "^0.8.3",
+    "jspdf": "^2.5.2",
+    "jsqr": "^1.4.0",
+    "proj4": "^2.22.0",
+    "qrcode": "^1.5.4",
+    "rbush": "^4.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@types/earcut": "^3.0.0",
+    "@types/node": "^26.6.4",
+    "@types/proj4": "^2.5.6",
+    "@types/qrcode": "^1.5.6",
+    "@types/rbush": "^4.0.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "fake-indexeddb": "^6.2.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  }
+}

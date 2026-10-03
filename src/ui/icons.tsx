@@ -1,0 +1,133 @@
+import React from 'react';
+
+/** Stroke icons (24×24). */
+const P: Record<string, string> = {
+  menu: 'M4 6h16M4 12h16M4 18h16',
+  undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3',
+  redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3',
+  layers: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5',
+  draw: 'M3 21l3-1 11-11-2-2L4 18l-1 3zM14 6l2-2 4 4-2 2',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4',
+  text: 'M5 6V4h14v2M12 4v16M9 20h6',
+  props: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',
+  fiber: 'M3 17c4-10 8 4 12-6 1.5-3.5 3-5 6-5M3 12c4-8 8 6 12-4M18 6a2 2 0 104 0 2 2 0 00-4 0',
+  search: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4',
+  measure: 'M3 17L17 3l4 4L7 21l-4-4zM7 13l2 2M10 10l2 2M13 7l2 2',
+  gps: 'M12 2v3M12 19v3M2 12h3M19 12h3M12 7a5 5 0 100 10 5 5 0 000-10zM12 11a1 1 0 100 2 1 1 0 000-2z',
+  survey: 'M9 3h6l1 2h3v16H5V5h3l1-2zM9 12l2 2 4-4',
+  note: 'M5 3h10l4 4v14H5V3zM14 3v5h5M8 12h8M8 16h6',
+  photo: 'M4 7h3l2-3h6l2 3h3v13H4V7zM12 10a3.5 3.5 0 100 7 3.5 3.5 0 000-7z',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
+  close: 'M6 6l12 12M18 6L6 18',
+  fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  locate: 'M12 2l7 19-7-4-7 4 7-19z',
+  follow: 'M12 3l6 16-6-3-6 3 6-16z',
+  north: 'M12 3l4 9h-8l4-9zM12 12v9',
+  folder: 'M3 6h6l2 2h10v11H3V6z',
+  file: 'M6 3h9l4 4v14H6V3zM14 3v5h5',
+  plus: 'M12 5v14M5 12h14',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z',
+  eyeoff: 'M3 3l18 18M10.6 6.1A10 10 0 0112 6c6 0 10 6 10 6a17 17 0 01-3.2 3.8M6.6 6.6C3.9 8.3 2 12 2 12s4 7 10 7c1.7 0 3.3-.5 4.6-1.3M9.9 9.9a3 3 0 004.2 4.2',
+  lock: 'M6 11h12v10H6V11zM8 11V7a4 4 0 018 0v4',
+  unlock: 'M6 11h12v10H6V11zM8 11V7a4 4 0 017.5-2',
+  snow: 'M12 2v20M4 6l16 12M20 6L4 18',
+  sun: 'M12 7a5 5 0 100 10 5 5 0 000-10zM12 1v3M12 20v3M1 12h3M20 12h3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1',
+  line: 'M4 20L20 4',
+  polyline: 'M3 18l5-9 5 6 8-11',
+  arc: 'M4 18a10 10 0 0116 0',
+  circle: 'M12 3a9 9 0 100 18 9 9 0 000-18z',
+  rect: 'M4 6h16v12H4z',
+  triangle: 'M12 4l9 16H3l9-16z',
+  polygon: 'M12 3l8.5 6.2-3.2 10H6.7l-3.2-10L12 3z',
+  ellipse: 'M12 6c5 0 9 2.7 9 6s-4 6-9 6-9-2.7-9-6 4-6 9-6z',
+  cloud: 'M7 18a4 4 0 01-.5-8A5.5 5.5 0 0117 8.5 4.5 4.5 0 0117.5 18H7z',
+  arrow: 'M4 20L19 5M19 5h-7M19 5v7',
+  freehand: 'M3 15c2-4 4-6 6-3s3 5 5 2 3-7 7-6',
+  point: 'M12 9a3 3 0 100 6 3 3 0 000-6zM12 3v3M12 18v3M3 12h3M18 12h3',
+  hatch: 'M4 4h16v16H4zM4 12L12 4M4 20L20 4M12 20l8-8',
+  leader: 'M4 20l7-7h9M4 20l1-4 3 3-4 1',
+  mtext: 'M4 5h16M4 10h16M4 15h10M4 20h7',
+  move: 'M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3',
+  copy: 'M8 8h12v12H8zM4 16V4h12',
+  paste: 'M9 4h6v3H9zM6 5H4v16h16V5h-2',
+  rotate: 'M20 11a8 8 0 10-2.3 5.7M20 4v7h-7',
+  mirror: 'M12 3v18M8 7L3 17h5V7zM16 7l5 10h-5V7z',
+  scale: 'M4 14v6h6M4 20l7-7M14 4h6v6M20 4l-7 7',
+  stretch: 'M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M10 5h4M10 19h4',
+  trim: 'M6 3v18M3 8l14 8M14 5l6 2',
+  extend: 'M18 3v18M3 12h11M11 9l3 3-3 3',
+  offset: 'M4 18L14 6M8 20L18 8',
+  fillet: 'M4 4v8a8 8 0 008 8h8',
+  chamfer: 'M4 4v10l6 6h10',
+  explode: 'M12 2v5M12 17v5M2 12h5M17 12h5M5 5l3.5 3.5M15.5 15.5L19 19M5 19l3.5-3.5M15.5 8.5L19 5',
+  join: 'M4 12h6M14 12h6M10 9v6M14 9v6',
+  break: 'M3 12h7M14 12h7M10 8l4 8',
+  pedit: 'M3 18l6-10 6 6 6-10M9 8h.01M15 14h.01',
+  match: 'M4 20l6-6M13 4l7 7-6 6-7-7 6-6z',
+  distance: 'M3 12h18M3 8v8M21 8v8',
+  area: 'M4 8l6-4 10 5-3 11H6L4 8z',
+  angle: 'M4 20h16M4 20L16 6M10 20a6 6 0 00-2-4.5',
+  calibrate: 'M12 2v4M12 18v4M2 12h4M18 12h4M12 8a4 4 0 100 8 4 4 0 000-8zM5 5l2 2M17 17l2 2',
+  track: 'M4 19c3-1 3-6 6-6s3 4 6 3 3-8 4-11M4 19h.01',
+  qr: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2',
+  trace: 'M4 4h4v4H4zM16 16h4v4h-4zM6 8v4h12v4M10 4h10',
+  report: 'M5 3h14v18H5zM8 8h8M8 12h8M8 16h5',
+  version: 'M6 3v12M6 15a3 3 0 100 6 3 3 0 000-6zM18 9a3 3 0 100-6 3 3 0 000 6zM18 9c0 6-12 3-12 6',
+  export: 'M12 3v12M7 10l5 5 5-5M4 17v4h16v-4',
+  import: 'M12 15V3M7 8l5-5 5 5M4 17v4h16v-4',
+  user: 'M12 3a4 4 0 100 8 4 4 0 000-8zM4 21c1-4 4.5-6 8-6s7 2 8 6',
+  users: 'M9 4a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM2 20c.8-3.5 3.6-5 7-5s6.2 1.5 7 5M16 4.5a3 3 0 010 6M18 15c2 .5 3.3 2 4 5',
+  sync: 'M4 12a8 8 0 0114-5.3M20 4v5h-5M20 12a8 8 0 01-14 5.3M4 20v-5h5',
+  settings: 'M12 9a3 3 0 100 6 3 3 0 000-6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.6 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.6-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z',
+  wrench: 'M14.7 6.3a4 4 0 00-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 005.4-5.4l-2.5 2.5-2.5-.5-.5-2.5 2.5-2.5z',
+  save: 'M5 3h12l4 4v14H3V3h2zM7 3v6h9V3M7 21v-7h10v7',
+  check: 'M4 12l5 5L20 6',
+  info: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 11v6M12 7.5v.5',
+  warning: 'M12 3l10 18H2L12 3zM12 10v5M12 18v.5',
+  pin: 'M12 22s7-7 7-12a7 7 0 10-14 0c0 5 7 12 7 12zM12 7a3 3 0 100 6 3 3 0 000-6z',
+  navigate: 'M3 11l18-8-8 18-2-8-8-2z',
+  camera: 'M4 7h3l2-3h6l2 3h3v13H4V7zM12 10a3.5 3.5 0 100 7 3.5 3.5 0 000-7z',
+  mic: 'M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM5 11a7 7 0 0014 0M12 18v3',
+  video: 'M3 6h12v12H3zM15 10l6-3v10l-6-3',
+  play: 'M7 4l13 8-13 8V4z',
+  stop: 'M6 6h12v12H6z',
+  grid: 'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',
+  snap: 'M5 5h5v5H5zM14 14l6 6M14 19l5-5',
+  ortho: 'M4 20V4M4 20h16',
+  compare: 'M4 4h7v16H4zM13 4h7v16h-7zM8 9v6M16 9v6',
+  splitter: 'M3 12h6M9 12l12-7M9 12h12M9 12l12 7',
+  cable: 'M3 6c6 0 6 12 12 12h6M3 18c6 0 6-12 12-12h6',
+  home: 'M3 11l9-8 9 8v10h-6v-6H9v6H3V11z',
+  zoomin: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4M8 11h6M11 8v6',
+  zoomout: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4M8 11h6',
+  bluetooth: 'M7 7l10 10-5 5V2l5 5L7 17',
+  usb: 'M12 2v14M9 5l3-3 3 3M8 10v3l4 3M16 8v3l-4 3M12 16a2 2 0 100 4 2 2 0 000-4z',
+  wifi: 'M2 9a15 15 0 0120 0M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M12 19.5v.5',
+  satellite: 'M13 7l4 4-6 6-4-4 6-6zM17 3l4 4-2 2-4-4 2-2zM7 13l-4 4 4 4M3 21l3-3',
+  globe: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+  shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z',
+  logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
+  dark: 'M20 14A8 8 0 0110 4a8 8 0 1010 10z',
+  boq: 'M4 4h16v4H4zM4 10h16v10H4zM8 14h8M8 17h5',
+};
+
+export function Icon({ name, size, className, style }: { name: string; size?: number; className?: string; style?: React.CSSProperties }) {
+  const d = P[name] ?? P.info;
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className={className} style={style} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={d} />
+    </svg>
+  );
+}
+
+export function Logo({ size = 26 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 64 64" width={size} height={size} className="logo" aria-hidden>
+      <rect width="64" height="64" rx="14" fill="#0b2240" />
+      <path d="M10 44 C24 14, 40 54, 54 20" stroke="#00d0ff" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <circle cx="54" cy="20" r="6" fill="#ffb000" />
+      <circle cx="10" cy="44" r="4" fill="#00d0ff" />
+    </svg>
+  );
+}

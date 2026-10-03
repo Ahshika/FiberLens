@@ -1,0 +1,7 @@
+node_modules
+dist
+scratch
+android/app/build
+android/build
+android/.gradle
+*.log
