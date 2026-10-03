@@ -24,8 +24,10 @@ const AA: any = A;
 const xyz = (x: number, y: number, z = 0) => new AA.XYZ(x, y, z);
 const xy = (x: number, y: number) => new AA.XY(x, y);
 
+/** acad-ts DwgWriter stores true colours with R and B swapped (its reader is correct): compensate */
+let SWAP_RB = false;
 function mkColor(aci?: number, rgb?: number): any {
-  if (rgb !== undefined) return new AA.Color((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
+  if (rgb !== undefined) return SWAP_RB ? new AA.Color(rgb & 255, (rgb >> 8) & 255, (rgb >> 16) & 255) : new AA.Color((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
   if (aci === undefined || aci === 256) return AA.Color.byLayer;
   if (aci === 0) return AA.Color.byBlock;
   return new AA.Color(aci);
@@ -296,11 +298,14 @@ function serialize(doc: any, format: ExportFormat): Uint8Array {
   const target = { write: (s: string) => { chunks.push(s); } };
   const w = new AA.DxfWriter(target, doc, false);
   w.write();
-  return new TextEncoder().encode(chunks.join(''));
+  // non-ASCII → \U+XXXX escapes (portable across all DXF versions / code pages)
+  const txt = chunks.join('').replace(/[^\x00-\x7f]/g, (c) => '\\U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'));
+  return new TextEncoder().encode(txt);
 }
 
 export function exportDrawing(d: Drawing, original: Uint8Array | null, format: ExportFormat, version?: string): ExportResult {
   const stats = { kept: 0, modified: 0, added: 0, deleted: 0, layers: 0 };
+  SWAP_RB = format === 'dwg';
   let doc: any;
   let ctx: Ctx;
   if (original) {

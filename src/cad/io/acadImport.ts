@@ -91,7 +91,7 @@ function textFields(e: AnyObj, ctx: ImportContext) {
     p2: e.alignmentPoint ? P(e.alignmentPoint, flip) : undefined,
     h: e.height || 1,
     rot: flip ? Math.PI - (e.rotation || 0) : (e.rotation || 0),
-    value: e.value ?? '',
+    value: decodeUnicode(e.value ?? ''),
     halign: ha,
     valign: va,
     widthFactor: e.widthFactor && e.widthFactor > 0 ? e.widthFactor : undefined,
@@ -570,4 +570,9 @@ export function repairAttributes(d: Drawing): number {
   visit(d.entities);
   for (const b of Object.values(d.blocks)) visit(b.entities);
   return fixed;
+}
+
+/** \U+XXXX escapes (older DXF / non-Unicode code pages) → characters */
+export function decodeUnicode(s: string): string {
+  return s.indexOf('\\U+') < 0 ? s : s.replace(/\\U\+([0-9A-Fa-f]{4})/g, (_m, h) => String.fromCharCode(parseInt(h, 16)));
 }
