@@ -31,7 +31,7 @@ export function recordChange(table: string, rowId: string, op: 'put' | 'delete',
   db.syncOutbox.add({ table, rowId, op, hlc: hlc(), projectId, payload }).catch(() => {});
 }
 
-export interface SyncConfig { url: string; token?: string; passphrase?: string; enabled: boolean; lastPull?: string }
+export interface SyncConfig { url: string; token?: string; passphrase?: string; enabled: boolean; lastPull?: string; lastPullAt?: number }
 export interface RemoteChange { table: string; rowId: string; op: 'put' | 'delete'; hlc: string; projectId?: string; row?: any; enc?: string }
 
 export interface SyncAdapter {
@@ -68,7 +68,10 @@ export async function syncNow(adapter?: SyncAdapter): Promise<{ pushed: number; 
   // ---- push ----
   const out = await db.syncOutbox.orderBy('seq').limit(500).toArray();
   const changes: RemoteChange[] = [];
-  for (const o of out) {
+  // keep only the latest queued change per row (a drawing edited 50× is uploaded once)
+  const latest = new Map<string, (typeof out)[number]>();
+  for (const o of out) latest.set(`${o.table}|${o.rowId}`, o);
+  for (const o of latest.values()) {
     if (!(SYNC_TABLES as readonly string[]).includes(o.table)) continue;
     let row: any = undefined;
     if (o.op === 'put') {
@@ -109,8 +112,26 @@ export async function syncNow(adapter?: SyncAdapter): Promise<{ pushed: number; 
     }
     await t.put(row);
   }
-  await setSyncConfig({ ...cfg, lastPull: cursor });
+  await setSyncConfig({ ...cfg, lastPull: cursor, lastPullAt: Date.now() });
   return { pushed: changes.length, pulled: incoming.length, conflicts: nConf };
 }
 
 export async function pendingChanges(): Promise<number> { return db.syncOutbox.count(); }
+
+let autoTimer: any = 0;
+let syncing = false;
+/** background sync every 2 minutes (and when the device comes online) while enabled */
+export function startAutoSync(onResult?: (r: { pushed: number; pulled: number; conflicts: number }) => void) {
+  const run = async () => {
+    if (syncing || !navigator.onLine) return;
+    const cfg = await getSyncConfig();
+    if (!cfg.enabled || !cfg.url) return;
+    syncing = true;
+    try { const r = await syncNow(); if (r.pushed || r.pulled) onResult?.(r); } catch { /* retry next tick */ }
+    finally { syncing = false; }
+  };
+  clearInterval(autoTimer);
+  autoTimer = setInterval(run, 120000);
+  addEventListener('online', run);
+  setTimeout(run, 5000);
+}

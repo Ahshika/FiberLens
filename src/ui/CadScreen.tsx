@@ -11,6 +11,7 @@ import { InfoCard } from './InfoCard';
 import { fmt } from './common';
 import './panels/register';
 import { NavHud } from './ftth/integration';
+import { LayoutTabs } from './LayoutTabs';
 
 const DOCK: { id: PanelId; label: string; icon: string }[] = [
   { id: 'layers', label: 'Layers', icon: 'layers' },
@@ -68,6 +69,7 @@ export function CadScreen() {
           <CadCanvas />
           <PromptBar />
           <CanvasControls />
+          <LayoutTabs />
           <InfoCard />
           <NavHud />
         </div>

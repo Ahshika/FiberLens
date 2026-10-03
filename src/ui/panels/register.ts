@@ -51,4 +51,5 @@ import * as __field from '../../field/fieldData';
 import * as __gps from '../../gps/controller';
 import * as __boq from '../../ftth/boq';
 import * as __reports from '../../reports/reports';
-if (import.meta.env.DEV) (window as any).__fl = { ftth: __ftthStore, topology: __topology, detect: __detect, projects: __projects, field: __field, gps: __gps, boq: __boq, reports: __reports };
+import * as __sync from '../../data/sync';
+if (import.meta.env.DEV) (window as any).__fl = { ftth: __ftthStore, topology: __topology, detect: __detect, projects: __projects, field: __field, gps: __gps, boq: __boq, reports: __reports, sync: __sync };

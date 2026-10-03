@@ -337,19 +337,26 @@ export class GlRenderer {
     c.gpuVersion = -1;
   }
 
-  render(scene: Scene, cam: Camera, opts: RenderOptions) {
+  /**
+   * Draw a scene. pass.clear=false draws on top of the previous pass; pass.scissor (device px,
+   * GL origin bottom-left) clips the pass — used for paper-space viewports.
+   */
+  render(scene: Scene, cam: Camera, opts: RenderOptions, pass: { clear?: boolean; scissor?: [number, number, number, number]; viewBox?: { minX: number; minY: number; maxX: number; maxY: number } } = {}) {
     const gl = this.gl;
     const W = Math.round(cam.width * cam.dpr), H = Math.round(cam.height * cam.dpr);
     if (this.canvas.width !== W || this.canvas.height !== H) { this.canvas.width = W; this.canvas.height = H; }
     gl.viewport(0, 0, W, H);
     const bg = opts.background;
-    gl.clearColor(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    if (pass.scissor) { gl.enable(gl.SCISSOR_TEST); gl.scissor(...pass.scissor); } else gl.disable(gl.SCISSOR_TEST);
+    if (pass.clear !== false) {
+      gl.clearColor(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
     this.updateStyleTextures(scene, opts);
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-    const view = cam.viewBox(8);
+    const view = pass.viewBox ?? cam.viewBox(8);
     const chunks = scene.visibleChunks(view);
     for (const c of chunks) if (c.gpuVersion !== c.version) this.upload(c);
     const rot: [number, number] = [Math.cos(-cam.rotation), Math.sin(-cam.rotation)];
@@ -407,6 +414,7 @@ export class GlRenderer {
       gl.drawArrays(gl.TRIANGLES, 0, g.maskCount);
     }
     gl.bindVertexArray(null);
+    gl.disable(gl.SCISSOR_TEST);
     this.lastDrawStats = { chunks: chunks.length, segments: segs, triangles: tris };
   }
 

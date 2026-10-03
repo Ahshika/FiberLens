@@ -114,7 +114,7 @@ export function SyncPanel() {
       <div className="kv small" style={{ marginBottom: 10 }}>
         <div>Network</div><div>{online ? <span className="badge ok">online</span> : <span className="badge warn">offline</span>}</div>
         <div>Pending changes</div><div>{pending}</div>
-        <div>Last pull</div><div className="mono">{cfg.lastPull ? new Date(parseInt(cfg.lastPull.slice(0, 13), 10) || 0).toLocaleString() : 'never'}</div>
+        <div>Last sync</div><div>{cfg.lastPullAt ? new Date(cfg.lastPullAt).toLocaleString() : 'never'}</div>
       </div>
       <div className="field"><label>Server URL (e.g. https://sync.example.com — see server/README)</label><input value={cfg.url} onChange={(e) => save({ ...cfg, url: e.target.value })} placeholder="https://…" /></div>
       <div className="field"><label>Access token</label><input type="password" value={cfg.token ?? ''} onChange={(e) => save({ ...cfg, token: e.target.value })} /></div>

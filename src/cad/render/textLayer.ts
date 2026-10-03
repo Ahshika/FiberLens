@@ -33,11 +33,13 @@ export class TextLayer {
     this.ctx.clearRect(0, 0, W, H);
   }
 
-  render(scene: Scene, cam: Camera, dark: boolean, alphaMul = 1) {
+  render(scene: Scene, cam: Camera, dark: boolean, alphaMul = 1, opts: { clear?: boolean; clip?: [number, number, number, number]; viewBox?: { minX: number; minY: number; maxX: number; maxY: number } } = {}) {
     const t0 = performance.now();
-    this.clear(cam);
+    if (opts.clear !== false) this.clear(cam);
     const ctx = this.ctx;
-    const view = cam.viewBox(20);
+    ctx.save();
+    if (opts.clip) { ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0); ctx.beginPath(); ctx.rect(...opts.clip); ctx.clip(); }
+    const view = opts.viewBox ?? cam.viewBox(20);
     let recs = scene.textTree.search(view);
     const layers = scene.styles.layers;
     const fg = dark ? 0xffffff : 0x000000;
@@ -111,6 +113,7 @@ export class TextLayer {
       }
     }
     ctx.globalAlpha = 1;
+    ctx.restore();
     this.lastCount = vis.length;
     this.lastMs = performance.now() - t0;
   }

@@ -1,5 +1,6 @@
 import type { GpsFix, GpsSource } from './types';
 import { NmeaParser } from './nmea';
+import { isNative, Geolocation } from '../platform/native';
 
 declare global { interface Window { Capacitor?: any } }
 
@@ -15,8 +16,7 @@ export class DeviceGpsSource implements GpsSource {
   private plugin: any = null;
 
   async start(onFix: (f: GpsFix) => void, onError: (e: string) => void) {
-    const cap = window.Capacitor;
-    this.plugin = cap?.isNativePlatform?.() ? cap.Plugins?.Geolocation : null;
+    this.plugin = isNative() ? Geolocation : null;
     const handle = (pos: any) => {
       const c = pos.coords;
       onFix({

@@ -121,7 +121,7 @@ export class ToolManager {
     if (this.pointers.size > 2) return;
     const ev = this.makeEvent(e);
     this.down = { ev, x: e.clientX, y: e.clientY, t: performance.now(), button: e.button, moved: false, mode: 'none' };
-    if (e.button === 1 || e.button === 2) { this.down.mode = 'pan'; return; }
+    if (e.button === 1 || e.button === 2 || this.view.layout) { this.down.mode = 'pan'; return; }
     this.active?.down(ev);
     if (e.pointerType === 'touch' && this.active?.id === 'select') {
       this.longPressArmed = false;
@@ -172,7 +172,7 @@ export class ToolManager {
         if (dn.mode === 'drag') { this.active?.drag(ev, dn.ev); this.view.invalidateOverlay(); return; }
       }
     }
-    this.active?.move(ev);
+    if (!this.view.layout) this.active?.move(ev);
     this.view.invalidateOverlay();
   };
 

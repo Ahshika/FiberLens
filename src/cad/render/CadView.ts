@@ -2,7 +2,8 @@ import { Camera } from './camera';
 import { Scene } from './scene';
 import { GlRenderer } from './glRenderer';
 import { TextLayer } from './textLayer';
-import type { CadDoc } from '../doc/CadDoc';
+import { CadDoc } from '../doc/CadDoc';
+import type { LayoutDef } from '../model/types';
 import { boxValid, type BBox, emptyBox, boxUnion } from '../geom/bbox';
 import { setTessTolerance } from '../geom/bulge';
 
@@ -42,6 +43,9 @@ export class CadView {
   private resizeObs: ResizeObserver;
   stats = { fps: 0, frameMs: 0, textMs: 0, texts: 0, segments: 0, chunks: 0, gpuMB: 0 };
   private disposed = false;
+  /** paper-space layout being viewed (read-only) */
+  layout: { def: LayoutDef; doc: CadDoc; scene: Scene; savedCam: Camera } | null = null;
+  layoutListeners = new Set<() => void>();
 
   constructor(public host: HTMLElement, public glCanvas: HTMLCanvasElement, public textCanvas: HTMLCanvasElement, public overlayCanvas: HTMLCanvasElement) {
     this.gl = new GlRenderer(glCanvas);
@@ -68,6 +72,7 @@ export class CadView {
 
   setDoc(doc: CadDoc | null, fit = true) {
     this.unsub?.();
+    if (this.layout) { this.gl.dispose(this.layout.scene); this.layout = null; for (const l of this.layoutListeners) l(); }
     if (this.scene) this.gl.dispose(this.scene);
     this.doc = doc;
     this.scene = null;
@@ -85,6 +90,46 @@ export class CadView {
       if (fit) this.fitExtents();
     }
     this.invalidate();
+  }
+
+  /** switch to a paper-space layout (null = model space) */
+  setLayout(def: LayoutDef | null) {
+    if (this.layout) { this.gl.dispose(this.layout.scene); Object.assign(this.cam, this.layout.savedCam, { width: this.cam.width, height: this.cam.height, dpr: this.cam.dpr }); this.layout = null; }
+    if (def && this.doc && this.scene) {
+      const d = this.doc.drawing;
+      const paper = new CadDoc({ ...d, entities: def.entities.map((e) => ({ ...e })), layouts: [], nextId: d.nextId });
+      const m = paper.drawing.meta;
+      const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+      if (!def.viewports.length) for (const e of paper.all()) { const eb = paper.box(e.id); if (eb) { b.minX = Math.min(b.minX, eb.minX); b.minY = Math.min(b.minY, eb.minY); b.maxX = Math.max(b.maxX, eb.maxX); b.maxY = Math.max(b.maxY, eb.maxY); } }
+      for (const v of def.viewports) { b.minX = Math.min(b.minX, v.center.x - v.width / 2); b.maxX = Math.max(b.maxX, v.center.x + v.width / 2); b.minY = Math.min(b.minY, v.center.y - v.height / 2); b.maxY = Math.max(b.maxY, v.center.y + v.height / 2); }
+      if (!Number.isFinite(b.minX)) { b.minX = 0; b.minY = 0; b.maxX = 420; b.maxY = 297; }
+      paper.drawing.meta = { ...m, extMin: { x: b.minX, y: b.minY }, extMax: { x: b.maxX, y: b.maxY } };
+      const scene = new Scene(paper);
+      scene.styles = this.scene.styles; // share layer/linetype tables with model space
+      this.layout = { def, doc: paper, scene, savedCam: this.cam.clone() };
+      this.cam.rotation = 0;
+      this.cam.fit(b, 0.04);
+    }
+    for (const l of this.layoutListeners) l();
+    this.viewChanged();
+  }
+
+  /** model-space camera + clip rectangle for a paper viewport */
+  private viewportCam(v: LayoutDef['viewports'][number]) {
+    const cam = this.cam;
+    const s = cam.worldToScreen(v.center.x, v.center.y);
+    const wpx = v.width * cam.scale, hpx = v.height * cam.scale;
+    const mc = cam.clone();
+    mc.scale = cam.scale * (v.height / (v.viewHeight || v.height));
+    mc.rotation = v.twist || 0;
+    // place viewCenter at the viewport's screen centre
+    mc.cx = v.viewCenter.x; mc.cy = v.viewCenter.y;
+    const off = mc.screenToWorld(cam.width / 2 - (s.x - cam.width / 2), cam.height / 2 - (s.y - cam.height / 2));
+    mc.cx = off.x; mc.cy = off.y;
+    const clip: [number, number, number, number] = [s.x - wpx / 2, s.y - hpx / 2, wpx, hpx];
+    const vw = (v.width * (v.viewHeight || v.height)) / v.height, vh = v.viewHeight || v.height;
+    const box = { minX: v.viewCenter.x - vw, maxX: v.viewCenter.x + vw, minY: v.viewCenter.y - vh, maxY: v.viewCenter.y + vh };
+    return { mc, clip, box, wpx, hpx };
   }
 
   addOverlay(key: string, draw: OverlayDrawer, z = 0) { this.overlays.set(key, { z, draw }); this.needOverlay = true; }
@@ -106,7 +151,7 @@ export class CadView {
 
   fitExtents() {
     if (!this.doc) return;
-    const m = this.doc.drawing.meta;
+    const m = (this.layout?.doc ?? this.doc).drawing.meta;
     this.cam.fit({ minX: m.extMin.x, minY: m.extMin.y, maxX: m.extMax.x, maxY: m.extMax.y });
     this.viewChanged();
   }
@@ -162,7 +207,21 @@ export class CadView {
       this.needScene = true;
       this.needText = true;
     }
-    if (this.needScene) {
+    if (this.layout && this.layout.scene.pending) { this.layout.scene.buildDirty(this.cam.viewBox(), 14); this.needScene = true; this.needText = true; }
+    if (this.needScene && this.layout && scene) {
+      this.needScene = false;
+      const ro = { dark: this.opts.dark, background: this.background, lineweights: this.opts.lineweights };
+      this.gl.render(this.layout.scene, this.cam, ro);
+      const dpr = this.cam.dpr, Hc = this.cam.height;
+      for (const v of this.layout.def.viewports) {
+        const { mc, clip, box, wpx, hpx } = this.viewportCam(v);
+        if (wpx < 2 || hpx < 2) continue;
+        if (clip[0] > this.cam.width || clip[1] > Hc || clip[0] + clip[2] < 0 || clip[1] + clip[3] < 0) continue;
+        if (scene.pending) scene.buildDirty(box, 20);
+        const sc: [number, number, number, number] = [Math.round(clip[0] * dpr), Math.round((Hc - clip[1] - clip[3]) * dpr), Math.round(clip[2] * dpr), Math.round(clip[3] * dpr)];
+        this.gl.render(scene, mc, ro, { clear: false, scissor: sc, viewBox: box });
+      }
+    } else if (this.needScene) {
       this.needScene = false;
       if (scene) {
         this.gl.render(scene, this.cam, { dark: this.opts.dark, background: this.background, lineweights: this.opts.lineweights, alpha: this.opts.drawingAlpha });
@@ -183,7 +242,13 @@ export class CadView {
         this.needText = false;
         this.text.clear(this.cam);
         if (this.opts.grid) this.drawGrid(this.text.ctx);
-        if (scene && this.opts.showText) this.text.render(scene, this.cam, this.opts.dark, this.opts.drawingAlpha);
+        if (this.layout && scene && this.opts.showText) {
+          this.text.render(this.layout.scene, this.cam, this.opts.dark, 1, { clear: false });
+          for (const v of this.layout.def.viewports) {
+            const { mc, clip, box } = this.viewportCam(v);
+            if (clip[2] > 4 && clip[3] > 4) this.text.render(scene, mc, this.opts.dark, 1, { clear: false, clip, viewBox: box });
+          }
+        } else if (scene && this.opts.showText) this.text.render(scene, this.cam, this.opts.dark, this.opts.drawingAlpha);
         this.stats.textMs = this.text.lastMs;
         this.stats.texts = this.text.lastCount;
       } else {
@@ -198,7 +263,14 @@ export class CadView {
       if (this.overlayCanvas.width !== W || this.overlayCanvas.height !== H) { this.overlayCanvas.width = W; this.overlayCanvas.height = H; }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      const list = [...this.overlays.values()].sort((a, b) => a.z - b.z);
+      const list = this.layout ? [] : [...this.overlays.values()].sort((a, b) => a.z - b.z);
+      if (this.layout) {
+        // viewport frames
+        ctx.save(); ctx.setTransform(this.cam.dpr, 0, 0, this.cam.dpr, 0, 0);
+        ctx.strokeStyle = 'rgba(46,168,255,0.6)'; ctx.setLineDash([6, 4]);
+        for (const v of this.layout.def.viewports) { const { clip } = this.viewportCam(v); ctx.strokeRect(...clip); }
+        ctx.restore();
+      }
       for (const o of list) {
         ctx.save();
         ctx.setTransform(this.cam.dpr, 0, 0, this.cam.dpr, 0, 0);

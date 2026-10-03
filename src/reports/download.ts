@@ -2,6 +2,8 @@
  * Save a generated file. In the browser: regular download. On Android (Capacitor): written to
  * Documents/FiberLens and offered through the system share sheet (email, WhatsApp, Drive…).
  */
+import { isNative, Filesystem, Directory, Share } from '../platform/native';
+
 function toBase64(data: Uint8Array): string {
   let s = '';
   for (let i = 0; i < data.length; i += 0x8000) s += String.fromCharCode(...data.subarray(i, i + 0x8000));
@@ -9,13 +11,18 @@ function toBase64(data: Uint8Array): string {
 }
 
 export async function downloadBytes(name: string, data: Uint8Array | Blob, mime = 'application/octet-stream') {
-  const cap = (window as any).Capacitor;
   const safe = name.replace(/[\\/:*?"<>|]+/g, '_');
-  if (cap?.isNativePlatform?.() && cap.Plugins?.Filesystem) {
+  if (isNative()) {
     const bytes = data instanceof Blob ? new Uint8Array(await data.arrayBuffer()) : data;
-    const res = await cap.Plugins.Filesystem.writeFile({ path: `FiberLens/${safe}`, data: toBase64(bytes), directory: 'DOCUMENTS', recursive: true });
-    try { await cap.Plugins.Share?.share({ title: safe, url: res.uri, dialogTitle: 'Share / save file' }); } catch { /* user dismissed */ }
-    return res.uri as string;
+    let res: { uri: string };
+    try {
+      res = await Filesystem.writeFile({ path: `FiberLens/${safe}`, data: toBase64(bytes), directory: Directory.Documents, recursive: true });
+    } catch {
+      // scoped storage fallback: app cache (always writable), then share
+      res = await Filesystem.writeFile({ path: safe, data: toBase64(bytes), directory: Directory.Cache, recursive: true });
+    }
+    try { await Share.share({ title: safe, url: res.uri, dialogTitle: 'Share / save file' }); } catch { /* user dismissed */ }
+    return res.uri;
   }
   const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: mime });
   const url = URL.createObjectURL(blob);

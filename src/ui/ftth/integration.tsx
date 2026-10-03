@@ -144,3 +144,24 @@ export function NavHud() {
 }
 
 export { linkedEntity };
+
+// ---------- native: QR deep links & back button ----------
+import { installNativeHandlers } from '../../platform/native';
+import { openFromQr, parseQr } from './OutputPanels';
+import { openProject } from '../../data/projects';
+import { useApp } from '../../app/store';
+installNativeHandlers({
+  onUrl: async (url) => {
+    if (!url.startsWith('fiberlens://')) return;
+    const r = parseQr(url);
+    if (r?.projectId && currentProjectId() !== r.projectId && (await db.projects.get(r.projectId))) await openProject(r.projectId);
+    setTimeout(() => openFromQr(url), 300);
+  },
+  onBack: () => {
+    const st = useApp.getState();
+    if (app.tools?.active && app.tools.active.id !== 'select') { app.setTool('select'); return true; }
+    if (st.panel) { st.set({ panel: null }); return true; }
+    if (st.infoEntity !== null) { st.set({ infoEntity: null }); return true; }
+    return false;
+  },
+});

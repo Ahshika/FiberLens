@@ -17,6 +17,7 @@ import { currentProjectId } from '../../data/projects';
 import type { FtthObjectRow, CableRow, CoreRow, SplitterRow, FtthKind } from '../../data/db';
 import { db } from '../../data/db';
 import { ObjectMediaSection } from '../field/ObjectMedia';
+import { SpliceEditor } from './SpliceEditor';
 
 const toast = (m: string, k: 'info' | 'error' | 'success' = 'info') => useApp.getState().toast(m, k);
 const err = (e: unknown) => toast((e as Error).message, 'error');
@@ -272,6 +273,7 @@ export function ObjectCard({ id, compact = false }: { id: string; compact?: bool
       {parent && <><div className="section">Fed from</div><div className="list-item" onClick={() => openCard({ type: 'object', id: parent.id })}><KindDot kind={parent.kind} /><b className="grow">{parent.code}</b><span className="small muted">{parent.kind}</span></div></>}
       {children.length > 0 && <><div className="section">Connected / downstream ({children.length})</div>
         {children.slice(0, 50).map((c) => <div key={c.id} className="list-item" onClick={() => openCard({ type: 'object', id: c.id })}><KindDot kind={c.kind} /><b className="grow">{c.code}</b><span className="small muted">{c.kind}</span></div>)}</>}
+      {!compact && ['Closure', 'Joint', 'FDT', 'FDH', 'ODF', 'Cabinet', 'FAT', 'FTB'].includes(o.kind) && <SpliceEditor objectId={o.id} />}
       <ObjectMediaSection objectId={o.id} objectCode={o.code} compact={compact} />
       {!compact && can('ftth.edit') && <button className="btn sm danger" style={{ marginTop: 12 }} onClick={async () => { if (await confirmDialog('Delete object', `Delete ${o.kind} ${o.code}? (CAD geometry is kept)`, true, 'Delete')) { await deleteObject(o.id); backCard(); } }}><Icon name="trash" />Delete object</button>}
     </div>

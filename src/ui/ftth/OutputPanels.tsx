@@ -31,7 +31,7 @@ export function parseQr(text: string): { projectId?: string; objectId?: string; 
   return text.trim() ? { code: text.trim() } : null;
 }
 
-function openFromQr(text: string) {
+export function openFromQr(text: string) {
   const r = parseQr(text);
   if (!r) return;
   const s = useFtth.getState();
