@@ -51,6 +51,9 @@ export class CadDoc {
   private redoStack: Transaction[] = [];
   private listeners = new Set<Listener>();
   private commitListeners = new Set<(t: Transaction, kind: 'do' | 'undo' | 'redo') => void>();
+  /** permission hook: return an error message to refuse a transaction */
+  guard: ((t: Omit<Transaction, 'at'>) => string | null) | null = null;
+  onRefused: ((msg: string) => void) | null = null;
   /** layer used for new entities */
   currentLayer = '0';
   dirty = false;
@@ -245,6 +248,8 @@ export class CadDoc {
 
   commit(t: Omit<Transaction, 'at'>): ChangeSet | null {
     if (!t.added.length && !t.removed.length && !t.modified.length && !t.layers && !t.blocks && !t.lineTypes) return null;
+    const refusal = this.guard?.(t);
+    if (refusal) { this.onRefused?.(refusal); return null; }
     const tx: Transaction = { ...clone(t), at: Date.now() };
     const cs = this.apply(tx, false);
     this.undoStack.push(tx);
@@ -275,6 +280,7 @@ export class CadDoc {
   get redoLabel() { return this.redoStack[this.redoStack.length - 1]?.label; }
 
   undo() {
+    if (this.guard?.({ label: 'Undo', added: [], removed: [], modified: [] })) { this.onRefused?.('Read-only'); return; }
     const t = this.undoStack.pop();
     if (!t) return;
     const cs = this.apply(t, true);

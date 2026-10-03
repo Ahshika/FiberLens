@@ -135,15 +135,17 @@ function appendJournal(tx: Transaction, kind: 'do' | 'undo' | 'redo') {
 }
 
 /** fold the journal into a new working snapshot */
-export async function compact() {
+export async function compact(): Promise<{ snap: Uint8Array; drawing: Drawing } | undefined> {
   if (!open || !app.doc) return;
   const o = open;
-  const snap = packJson(app.doc.snapshot());
+  const drawing = app.doc.snapshot();
+  const snap = packJson(drawing);
   await db.transaction('rw', db.drawings, db.journal, async () => {
     await db.drawings.update(o.drawingId, { snapshot: snap, journalSeq: o.seq, snapshotAt: Date.now(), entityCount: app.doc!.size, updatedAt: Date.now() });
     await db.journal.where('drawingId').equals(o.drawingId).delete();
   });
   o.snapshotSeq = o.seq;
+  return { snap, drawing };
 }
 
 export async function closeProject() {
@@ -189,17 +191,17 @@ export async function saveVersion(label?: string, kind: VersionRow['kind'] = 'de
   useApp.setState({ loading: 'Saving version…' });
   try {
     await journalQueue;
-    await compact();
+    const c = await compact();
     const versions = await listVersions(o.drawingId);
     const last = versions[0];
-    const cur = app.doc.snapshot();
+    const cur = c?.drawing ?? app.doc.snapshot();
     const prev = last ? unpackJson<Drawing>(last.snapshot) : null;
     const diff = diffSummary(prev, cur);
     const number = (last?.number ?? 0) + 1;
     const row: VersionRow = {
       id: uid(), projectId: o.projectId, drawingId: o.drawingId, number,
       label: label || (kind === 'asbuilt' ? `As-Built V${number}` : `V${number}`), kind,
-      snapshot: packJson(cur), ftth: await ftthSnapshot(o.projectId), createdAt: Date.now(),
+      snapshot: c?.snap ?? packJson(cur), ftth: await ftthSnapshot(o.projectId), createdAt: Date.now(),
       userId: useSession.getState().user?.id, userName: useSession.getState().user?.displayName,
       summary: diff.text + (note ? ` — ${note}` : ''), parentId: last?.id, entityCount: cur.entities.length,
     };

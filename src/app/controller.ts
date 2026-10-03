@@ -13,6 +13,7 @@ import { useGps } from '../gps/gpsStore';
 import { isUsable } from '../geo/calibration';
 import { guessProjectedFromExtents } from '../geo/crs';
 import { INSUNITS } from '../cad/model/types';
+import { can, audit } from '../auth/session';
 
 type Hook = () => void;
 
@@ -103,6 +104,18 @@ export class AppController {
     for (const u of this.docUnsubs) u();
     this.docUnsubs = [];
     this.doc = new CadDoc(d);
+    this.doc.guard = (t) => {
+      if (can('cad.edit')) return null;
+      // layer visibility (on / freeze / lock) is a display preference, allowed for every role
+      if (!t.added.length && !t.removed.length && !t.modified.length && !t.blocks && !t.lineTypes && t.layers) {
+        const strip = (ls: any[]) => JSON.stringify(ls.map(({ on, frozen, locked, ...rest }) => rest));
+        if (strip(t.layers.before) === strip(t.layers.after)) return null;
+      }
+      if (can('field.edit') && useApp.getState().mode === 'asbuilt') return null;
+      return can('field.edit') ? 'Switch the project to As-Built mode to record field changes on the drawing (Project → As-Built).' : 'Your role is read-only for drawing edits.';
+    };
+    this.doc.onRefused = (m) => useApp.getState().toast(m, 'error');
+    this.docUnsubs.push(this.doc.onCommit((tx, kind) => { if (kind === 'do') audit('cad.' + tx.label.toLowerCase().replace(/\s+/g, '-'), `${tx.added.length}+ ${tx.modified.length}~ ${tx.removed.length}-`); }));
     if (opts.original !== undefined) { this.original = opts.original; this.originalName = opts.originalName ?? ''; }
     this.selection?.clear();
     this.docUnsubs.push(this.doc.onChange(() => {
