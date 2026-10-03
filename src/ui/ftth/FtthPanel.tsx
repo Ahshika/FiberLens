@@ -18,6 +18,7 @@ import type { FtthObjectRow, CableRow, CoreRow, SplitterRow, FtthKind } from '..
 import { db } from '../../data/db';
 import { ObjectMediaSection } from '../field/ObjectMedia';
 import { SpliceEditor } from './SpliceEditor';
+import { useT } from '../../app/i18n';
 
 const toast = (m: string, k: 'info' | 'error' | 'success' = 'info') => useApp.getState().toast(m, k);
 const err = (e: unknown) => toast((e as Error).message, 'error');
@@ -31,6 +32,7 @@ export function StatusBadge({ s }: { s: string }) {
 
 export function FtthPanel() {
   const ui = useFtthUi();
+  const tr = useT();
   useFtth((s) => s.rev);
   if (ui.card) {
     return (
@@ -45,7 +47,7 @@ export function FtthPanel() {
   const tabs: [FtthTab, string][] = [['overview', 'Overview'], ['objects', 'Objects'], ['cables', 'Cables'], ['splitters', 'Splitters'], ['trace', 'Trace'], ['detect', 'Detect']];
   return (
     <div>
-      <div className="tabs">{tabs.map(([t, l]) => <button key={t} className={ui.tab === t ? 'on' : ''} onClick={() => ui.set({ tab: t })}>{l}</button>)}</div>
+      <div className="tabs">{tabs.map(([k, l]) => <button key={k} className={ui.tab === k ? 'on' : ''} onClick={() => ui.set({ tab: k })}>{tr(l)}</button>)}</div>
       {ui.tab === 'overview' && <Overview />}
       {ui.tab === 'objects' && <ObjectsList />}
       {ui.tab === 'cables' && <CablesList />}
@@ -58,6 +60,7 @@ export function FtthPanel() {
 
 function Overview() {
   const s = useFtth();
+  const tr = useT();
   const gps = useGps();
   const view = useFtthView();
   const counts = useMemo(() => {
@@ -92,18 +95,18 @@ function Overview() {
         ))}
       </div>
       <div className="kv small" style={{ margin: '10px 0' }}>
-        <div>Cables</div><div>{s.cables.size} ({fmt(totalLen, 0)} m fibre)</div>
+        <div>{tr('Cables')}</div><div dir="ltr">{s.cables.size} ({fmt(totalLen, 0)} m fibre)</div>
         <div>Splitters</div><div>{s.splitters.size}</div>
       </div>
       {s.objects.size === 0 && <div className="card small" style={{ marginBottom: 10 }}>No smart objects yet. Use <b>Detect</b> to recognise FAT/FDT/closures/cables from the DWG layers & blocks, or place them manually.</div>}
       <div className="section">Tools</div>
       <div className="tool-grid">
-        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-place')}><Icon name="pin" />Place object</button>
-        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-cable')}><Icon name="cable" />Draw cable</button>
-        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-link')}><Icon name="join" />Link CAD → FTTH</button>
-        <button className="tool-btn" onClick={() => useFtthUi.getState().set({ tab: 'detect' })}><Icon name="search" />Detect</button>
-        <button className="tool-btn" onClick={() => useApp.getState().set({ panel: 'reports' })}><Icon name="boq" />BOQ & reports</button>
-        <button className="tool-btn" onClick={() => useApp.getState().set({ panel: 'qr' })}><Icon name="qr" />QR codes</button>
+        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-place')}><Icon name="pin" />{tr('Place object')}</button>
+        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-cable')}><Icon name="cable" />{tr('Draw cable')}</button>
+        <button className="tool-btn" disabled={!can('ftth.edit')} onClick={() => app.setTool('ftth-link')}><Icon name="join" />{tr('Link CAD → FTTH')}</button>
+        <button className="tool-btn" onClick={() => useFtthUi.getState().set({ tab: 'detect' })}><Icon name="search" />{tr('Detect')}</button>
+        <button className="tool-btn" onClick={() => useApp.getState().set({ panel: 'reports' })}><Icon name="boq" />{tr('BOQ & reports')}</button>
+        <button className="tool-btn" onClick={() => useApp.getState().set({ panel: 'qr' })}><Icon name="qr" />{tr('QR codes')}</button>
       </div>
       <div className="section">Display</div>
       <label className="row"><input type="checkbox" checked={view.markers} onChange={(e) => view.set({ markers: e.target.checked })} /> Smart-object markers</label>
@@ -217,6 +220,7 @@ function PropsEditor({ props, onChange, readOnly }: { props: Record<string, any>
 
 export function ObjectCard({ id, compact = false }: { id: string; compact?: boolean }) {
   useFtth((s) => s.rev);
+  const tr = useT();
   const o = getObject(id);
   const gps = useGps();
   if (!o) return <div className="empty">Object not found</div>;
@@ -239,8 +243,8 @@ export function ObjectCard({ id, compact = false }: { id: string; compact?: bool
       {o.name && <div className="small" dir="auto">{o.name}</div>}
       {dist !== null && <div className="small muted">📍 {fmt(dist, 1)} m from you</div>}
       <div className="row wrap" style={{ margin: '8px 0', gap: 6 }}>
-        <button className="btn sm primary" onClick={() => runTrace(o.id, 'up')}><Icon name="trace" />Trace to OLT</button>
-        <button className="btn sm" onClick={() => runTrace(o.id, 'down')}><Icon name="trace" />Trace downstream</button>
+        <button className="btn sm primary" onClick={() => runTrace(o.id, 'up')}><Icon name="trace" />{tr('Trace to OLT')}</button>
+        <button className="btn sm" onClick={() => runTrace(o.id, 'down')}><Icon name="trace" />{tr('Trace downstream')}</button>
         <button className="btn sm" onClick={() => gpsController.setNavTarget({ name: o.code, x: o.cad.x, y: o.cad.y, id: o.id })}><Icon name="navigate" />Navigate</button>
         <button className="btn sm" onClick={() => app.view?.centerOn(o.cad.x, o.cad.y, Math.max(app.view.cam.scale, 3 / upm))}><Icon name="zoomin" />Zoom</button>
         <button className="btn sm" onClick={() => { (window as any).__qrObject = o.id; useApp.getState().set({ panel: 'qr' }); }}><Icon name="qr" />QR</button>

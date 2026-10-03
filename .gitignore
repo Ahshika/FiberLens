@@ -5,3 +5,5 @@ android/app/build
 android/build
 android/.gradle
 *.log
+release/*.apk
+android/local.properties

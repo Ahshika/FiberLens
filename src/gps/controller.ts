@@ -1,6 +1,7 @@
 import { useGps, type TrackPoint } from './gpsStore';
 import type { GpsFix, GpsSource } from './types';
-import { DeviceGpsSource, SerialNmeaSource, BleNmeaSource, SimulatorSource } from './sources';
+import { DeviceGpsSource, SerialNmeaSource, BleNmeaSource, SimulatorSource, BluetoothSppSource } from './sources';
+import { ask } from '../app/dialogs';
 import { geoToCad, cadToGeo, headingToCadAngle, isUsable, type Calibration } from '../geo/calibration';
 import { app } from '../app/controller';
 import { useApp } from '../app/store';
@@ -41,6 +42,10 @@ class GpsController {
       case 'serial115': return new SerialNmeaSource(115200);
       case 'ble': return new BleNmeaSource();
       case 'sim': return new SimulatorSource(this.simulatorRoute());
+      case 'bt-spp': return new BluetoothSppSource(async (devices) => {
+        const r = await ask('Choose GNSS receiver', [{ key: 'a', label: 'Paired Bluetooth devices', type: 'select', value: devices[0].address, options: devices.map((d) => ({ value: d.address, label: `${d.name || 'Unknown'} (${d.address})` })) }], { okLabel: 'Connect' });
+        return r?.a ?? null;
+      });
       default: return new DeviceGpsSource();
     }
   }

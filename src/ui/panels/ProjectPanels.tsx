@@ -13,6 +13,8 @@ import { unpackJson } from '../../data/compress';
 import type { Drawing } from '../../cad/model/types';
 import { exportBackup, importBackup } from '../../data/backup';
 import { useDialog } from '../../app/dialogs';
+import { XrefSection } from './XrefSection';
+import { useT, useLang } from '../../app/i18n';
 
 export function ProjectPanel() {
   const st = useApp();
@@ -94,6 +96,7 @@ export function ProjectPanel() {
           </div>
         </>
       )}
+      <XrefSection />
       <div className="section">Backup</div>
       <div className="row wrap">
         <button className="btn sm" onClick={async () => { const r = await ask('Encrypted backup', [{ key: 'pw', label: 'Passphrase (leave empty for no encryption)', type: 'password' }]); if (r) await exportBackup(p.id, r.pw || undefined); }}><Icon name="export" />Export project backup</button>
@@ -157,12 +160,19 @@ export function VersionsPanel() {
 
 export function SettingsPanel() {
   const st = useApp();
+  const lang = useLang((s) => s.lang);
+  const setLang = useLang((s) => s.set);
   const kinds = Object.keys(st.snap.kinds) as (keyof typeof st.snap.kinds)[];
   const [usage, setUsage] = useState<string>('');
   useEffect(() => { navigator.storage?.estimate?.().then((e) => setUsage(`${((e.usage ?? 0) / 1048576).toFixed(0)} MB used of ${((e.quota ?? 0) / 1073741824).toFixed(1)} GB`)); navigator.storage?.persist?.(); }, []);
   const v = app.view;
   return (
     <div>
+      <div className="section">Language / اللغة</div>
+      <div className="row" style={{ marginBottom: 8 }}>
+        <button className={`btn sm ${lang === 'en' ? 'primary' : ''}`} onClick={() => setLang('en')}>English</button>
+        <button className={`btn sm ${lang === 'ar' ? 'primary' : ''}`} onClick={() => setLang('ar')}>العربية</button>
+      </div>
       <div className="section">Display</div>
       <label className="row"><input type="checkbox" checked={st.dark} onChange={(e) => app.setOption('dark', e.target.checked)} /> Dark canvas (ACI 7 = white)</label>
       <label className="row"><input type="checkbox" checked={st.lineweights} onChange={(e) => app.setOption('lineweights', e.target.checked)} /> Show lineweights</label>
@@ -207,9 +217,10 @@ const MORE: { id: PanelId; label: string; icon: string }[] = [
 ];
 
 export function MorePanel() {
+  const t = useT();
   return (
     <div className="tool-grid">
-      {MORE.map((m) => <button key={m.id} className="tool-btn" onClick={() => useApp.getState().set({ panel: m.id })}><Icon name={m.icon} />{m.label}</button>)}
+      {MORE.map((m) => <button key={m.id} className="tool-btn" onClick={() => useApp.getState().set({ panel: m.id })}><Icon name={m.icon} />{t(m.label)}</button>)}
     </div>
   );
 }

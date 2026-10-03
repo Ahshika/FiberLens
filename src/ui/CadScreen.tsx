@@ -12,6 +12,7 @@ import { fmt } from './common';
 import './panels/register';
 import { NavHud } from './ftth/integration';
 import { LayoutTabs } from './LayoutTabs';
+import { useT } from '../app/i18n';
 
 const DOCK: { id: PanelId; label: string; icon: string }[] = [
   { id: 'layers', label: 'Layers', icon: 'layers' },
@@ -30,6 +31,7 @@ const DOCK: { id: PanelId; label: string; icon: string }[] = [
 
 function TopBar() {
   const s = useApp();
+  const t = useT();
   return (
     <div className="topbar">
       <div className="brand" onClick={() => s.set({ panel: s.panel === 'project' ? null : 'project' })} title="Project">
@@ -39,7 +41,7 @@ function TopBar() {
           <span className="dname">{s.drawingName}{s.dirty ? ' •' : ''}</span>
         </div>
       </div>
-      <span className={`mode-badge ${s.mode}`} title="Design / As-Built mode">{s.mode === 'design' ? 'DESIGN' : 'AS-BUILT'}</span>
+      <span className={`mode-badge ${s.mode}`} title="Design / As-Built mode">{s.mode === 'design' ? t('DESIGN') : t('AS-BUILT')}</span>
       <div className="top-sep hide-sm" />
       <GpsPill />
       <div className="coords hide-sm" title="Cursor (drawing coordinates)">
@@ -57,6 +59,7 @@ function TopBar() {
 }
 
 export function CadScreen() {
+  const t = useT();
   const panel = useApp((s) => s.panel);
   const set = useApp((s) => s.set);
   const [moreOpen] = useState(false);
@@ -79,7 +82,7 @@ export function CadScreen() {
         {DOCK.map((d) => (
           <button key={d.id} className={panel === d.id ? 'on' : ''} onClick={() => set({ panel: panel === d.id ? null : d.id })}>
             <Icon name={d.icon} />
-            {d.label}
+            {t(d.label)}
           </button>
         ))}
       </div>

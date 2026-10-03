@@ -22,9 +22,14 @@
 | DWG versions | R13 and older (AC1012-) are not read by acad-ts | Save as DXF / DWG 2000+, or plug the ODA engine into `CadEngine` |
 | DXF export | acad-ts DXF writer can drop some complex entities on very large drawings | Use DWG export (lossless merge) — DXF is fine for new/small drawings |
 | Fonts | SHX glyphs are replaced by TrueType equivalents (licensing) | Configurable font map |
-| Paper space | Layouts are imported but the UI shows model space | Layout viewer with viewport clipping |
-| Xrefs / images / OLE | Xrefs unresolved, raster images shown as frames, OLE not rendered | Attach xref files to the project; image texture rendering |
-| External GNSS on Android | WebView has no Web Serial / Web Bluetooth: use the receiver's app with Android *mock location* (works with every RTK receiver) | Native Capacitor plugin for Bluetooth SPP + `GnssStatus` satellites |
-| Satellites count | Not exposed by the phone location API (NMEA sources report it) | Same native plugin |
+| Images / OLE | Raster images shown as frames, OLE not rendered (Xrefs: attach the referenced file in Project → Xrefs) | Image texture rendering |
+| External GNSS on Android | Native plugin: Bluetooth Classic (SPP) NMEA receivers + `GnssStatus` satellites. BLE receivers on Android: use the vendor app with mock location | Native BLE GATT support |
 | Concurrent CAD edits | Sync is last-writer-wins per drawing working copy | Journal-based merge (transactions are already journaled) |
 | Detection | Rule-based; drawings that repeat the map inside plot frames need a scope (visible area / boundary) | Rules are editable per project |
+
+## Android verification
+* APK installed and launched on an Android 14 emulator (tablet, WebView Chrome 113): WebGL2
+  available, all Capacitor plugins + the native `FiberLensGnss` plugin registered, location
+  permission flow works, tablet layout renders correctly.
+* Build: `npm run build && npx cap sync android && cd android && ./gradlew assembleDebug`
+  (JDK 21 + Android SDK 36). For Play Store: `./gradlew bundleRelease` with your signing key.

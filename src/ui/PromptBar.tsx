@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../app/store';
 import { app } from '../app/controller';
+import { useT } from '../app/i18n';
 
 /** CAD-style command prompt: current tool, instruction, typed input and tool options. */
 export function PromptBar() {
@@ -8,6 +9,7 @@ export function PromptBar() {
   const prompt = useApp((s) => s.prompt);
   useApp((s) => s.toolRev);
   const [text, setText] = useState('');
+  const t = useT();
   const tool = app.tools?.active;
   if (!tool || toolId === 'select') return null;
   const opts = tool.options();
@@ -38,7 +40,7 @@ export function PromptBar() {
           </span>
         ))}
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="x,y | @dx,dy | len" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') tool.escape(); e.stopPropagation(); }} />
-        <button onClick={() => tool.enter()}>Done</button>
+        <button onClick={() => tool.enter()}>{t('Done')}</button>
         <button onClick={() => app.setTool('select')}>✕</button>
       </div>
     </div>

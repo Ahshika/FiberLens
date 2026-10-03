@@ -6,6 +6,7 @@ import { listProjects, createProject, importDrawingFile, openProject, newBlankDr
 import type { ProjectRow } from '../data/db';
 import { ask, confirmDialog } from '../app/dialogs';
 import { DEV_SEED } from '../dev/seed';
+import { useT } from '../app/i18n';
 
 function AuthForm({ setup }: { setup: boolean }) {
   const [u, setU] = useState(setup ? 'admin' : '');
@@ -34,6 +35,7 @@ function AuthForm({ setup }: { setup: boolean }) {
 
 export function StartScreen() {
   const session = useSession();
+  const t = useT();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [over, setOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -111,26 +113,26 @@ export function StartScreen() {
           <Logo size={56} />
           <div className="grow">
             <h1>FiberLens</h1>
-            <p>Smart CAD + FTTH Field Engineering — your DWG is the map.</p>
+            <p>{t('Smart CAD + FTTH Field Engineering — your DWG is the map.')}</p>
           </div>
           {session.user && (
             <div className="col" style={{ alignItems: 'flex-end', gap: 4 }}>
               <span className="badge info">{session.user.displayName} · {ROLE_LABEL[session.user.role]}</span>
-              <button className="btn sm" onClick={logout}><Icon name="logout" />Sign out</button>
+              <button className="btn sm" onClick={logout}><Icon name="logout" />{t('Sign out')}</button>
             </div>
           )}
         </div>
         {session.needsSetup ? <AuthForm setup /> : !session.user ? <AuthForm setup={false} /> : (
           <>
             <div className="start-actions">
-              <button className="btn primary" onClick={() => fileRef.current?.click()} disabled={!can('project.manage') && !can('cad.edit')}><Icon name="import" />Open DWG / DXF</button>
-              <button className="btn" onClick={newEmpty} disabled={!can('project.manage')}><Icon name="plus" />New blank project</button>
+              <button className="btn primary" onClick={() => fileRef.current?.click()} disabled={!can('project.manage') && !can('cad.edit')}><Icon name="import" />{t('Open DWG / DXF')}</button>
+              <button className="btn" onClick={newEmpty} disabled={!can('project.manage')} title={t('New blank project')}><Icon name="plus" />{t('New blank project')}</button>
               <input ref={fileRef} type="file" accept=".dwg,.dxf" style={{ display: 'none' }} onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }} />
             </div>
             <div className={`dropzone ${over ? 'over' : ''}`} style={{ marginBottom: 20 }}>
-              Drop a DWG or DXF file here. The original is stored read-only; you always edit a project copy.
+              {t('Drop a DWG or DXF file here. The original is stored read-only; you always edit a project copy.')}
             </div>
-            <div className="section">Projects ({projects.length})</div>
+            <div className="section">{t('Projects')} ({projects.length})</div>
             {projects.length === 0 ? <div className="empty">No projects yet.</div> : (
               <div className="proj-grid">
                 {projects.map((p) => (

@@ -1,6 +1,8 @@
 import type { GpsFix, GpsSource } from './types';
 import { NmeaParser } from './nmea';
 import { isNative, Geolocation } from '../platform/native';
+import { FiberLensGnss } from '../platform/gnssNative';
+import type { PluginListenerHandle } from '@capacitor/core';
 
 declare global { interface Window { Capacitor?: any } }
 
@@ -14,12 +16,22 @@ export class DeviceGpsSource implements GpsSource {
   readonly label = 'Phone GNSS';
   private watch: any = null;
   private plugin: any = null;
+  private sats: { used: number; inView: number } | null = null;
+  private statusSub: PluginListenerHandle | null = null;
 
   async start(onFix: (f: GpsFix) => void, onError: (e: string) => void) {
     this.plugin = isNative() ? Geolocation : null;
+    if (this.plugin) {
+      // satellites used / in view from Android GnssStatus (native FiberLens plugin)
+      try {
+        this.statusSub = await FiberLensGnss.addListener('gnssStatus', (s) => { this.sats = { used: s.used, inView: s.inView }; });
+        await FiberLensGnss.startStatus();
+      } catch { /* plugin unavailable: no satellite info */ }
+    }
     const handle = (pos: any) => {
       const c = pos.coords;
       onFix({
+        satellites: this.sats?.used, satellitesInView: this.sats?.inView,
         lat: c.latitude, lon: c.longitude, alt: c.altitude ?? undefined, accuracy: c.accuracy ?? 99,
         altAccuracy: c.altitudeAccuracy ?? undefined, heading: Number.isFinite(c.heading) ? c.heading : undefined,
         speed: Number.isFinite(c.speed) ? c.speed : undefined, source: this.label, time: pos.timestamp || Date.now(),
@@ -43,6 +55,8 @@ export class DeviceGpsSource implements GpsSource {
   }
 
   stop() {
+    this.statusSub?.remove(); this.statusSub = null;
+    if (this.plugin) FiberLensGnss.stopStatus().catch(() => {});
     if (this.watch === null) return;
     if (this.plugin) this.plugin.clearWatch({ id: this.watch });
     else navigator.geolocation.clearWatch(this.watch);
@@ -173,4 +187,39 @@ export class SimulatorSource implements GpsSource {
     this.timer = setInterval(tick, 1000);
   }
   stop() { clearInterval(this.timer); }
+}
+
+/**
+ * External GNSS / RTK receiver over Bluetooth Classic (SPP) — Android app only, through the
+ * native FiberLens plugin. Streams NMEA (GGA/RMC/GST…) so RTK fix type, HDOP, satellites and
+ * accuracy come straight from the receiver.
+ */
+export class BluetoothSppSource implements GpsSource {
+  readonly id = 'bt-spp';
+  readonly label = 'External GNSS (Bluetooth)';
+  private subs: PluginListenerHandle[] = [];
+  constructor(private choose: (devices: { name: string; address: string }[]) => Promise<string | null>) {}
+
+  async start(onFix: (f: GpsFix) => void, onError: (e: string) => void) {
+    if (!isNative()) { onError('Bluetooth receivers are supported in the Android app. On desktop use USB/Serial or Bluetooth LE.'); return; }
+    try {
+      const { devices } = await FiberLensGnss.listBondedDevices();
+      if (!devices.length) { onError('No paired Bluetooth devices. Pair the GNSS receiver in Android settings first.'); return; }
+      const address = await this.choose(devices);
+      if (!address) { onError('No receiver selected'); return; }
+      const parser = new NmeaParser(this.label, onFix);
+      this.subs.push(await FiberLensGnss.addListener('sppData', (e) => parser.push(e.sentence + '\n')));
+      this.subs.push(await FiberLensGnss.addListener('sppError', (e) => onError('Receiver disconnected: ' + e.error)));
+      const r = await FiberLensGnss.connect({ address });
+      (this as any).label = 'Bluetooth: ' + (r.name || address);
+    } catch (err) {
+      onError((err as Error).message ?? String(err));
+    }
+  }
+
+  stop() {
+    for (const s of this.subs) s.remove();
+    this.subs = [];
+    FiberLensGnss.disconnect().catch(() => {});
+  }
 }

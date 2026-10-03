@@ -16,6 +16,7 @@ import { ask, confirmDialog } from '../../app/dialogs';
 import { can } from '../../auth/session';
 import { downloadText } from '../../reports/download';
 import { tracksToGpx } from '../../reports/geoExport';
+import { useT } from '../../app/i18n';
 
 /** One-shot point picker used by the calibration wizard and other modules. */
 export class PickPointTool extends Tool {
@@ -46,6 +47,7 @@ export function pickPoint(prompt: string): Promise<Vec2> {
 
 const SOURCES = [
   { id: 'device', label: 'Phone GNSS (incl. external receivers via mock location)', icon: 'satellite' },
+  { id: 'bt-spp', label: 'External GNSS / RTK · Bluetooth (Android app)', icon: 'bluetooth' },
   { id: 'serial', label: 'External GNSS · USB/Serial 9600', icon: 'usb' },
   { id: 'serial115', label: 'External GNSS · USB/Serial 115200 (RTK)', icon: 'usb' },
   { id: 'ble', label: 'External GNSS · Bluetooth LE', icon: 'bluetooth' },
@@ -54,6 +56,7 @@ const SOURCES = [
 
 export function GpsPanel() {
   const g = useGps();
+  const t = useT();
   const [tracks, setTracks] = useState<TrackRow[]>([]);
   const pid = currentProjectId();
   const loadTracks = () => { if (pid) db.tracks.where('projectId').equals(pid).reverse().sortBy('startedAt').then(setTracks); };
@@ -106,10 +109,10 @@ export function GpsPanel() {
 
       <div className="section">Modes</div>
       <div className="grid2">
-        <button className="btn" onClick={() => { if (!g.running) gpsController.start(); gpsController.locate(); }}><Icon name="locate" />Locate me</button>
-        <button className={`btn ${g.follow ? 'primary' : ''}`} onClick={() => { if (!g.running) gpsController.start(); g.set({ follow: !g.follow }); gpsController.locate(); }}><Icon name="follow" />Follow me</button>
-        <button className={`btn ${!g.headingUp && g.northUp ? 'primary' : ''}`} onClick={() => gpsController.setNorthUp(!g.northUp)}><Icon name="north" />North up</button>
-        <button className={`btn ${g.headingUp ? 'primary' : ''}`} onClick={() => gpsController.setHeadingUp(!g.headingUp)}><Icon name="navigate" />Heading up</button>
+        <button className="btn" onClick={() => { if (!g.running) gpsController.start(); gpsController.locate(); }}><Icon name="locate" />{t('Locate me')}</button>
+        <button className={`btn ${g.follow ? 'primary' : ''}`} onClick={() => { if (!g.running) gpsController.start(); g.set({ follow: !g.follow }); gpsController.locate(); }}><Icon name="follow" />{t('Follow me')}</button>
+        <button className={`btn ${!g.headingUp && g.northUp ? 'primary' : ''}`} onClick={() => gpsController.setNorthUp(!g.northUp)}><Icon name="north" />{t('North up')}</button>
+        <button className={`btn ${g.headingUp ? 'primary' : ''}`} onClick={() => gpsController.setHeadingUp(!g.headingUp)}><Icon name="navigate" />{t('Heading up')}</button>
       </div>
 
       <div className="section">Georeference</div>
