@@ -68,3 +68,14 @@
   Check on 003: 36,884 attributes, all match attdef rotation/height except 12 intentional 180° flips.
 * TrueType text is sized by the em (capitals ≈ 0.72 × height) like AutoCAD; SHX by capital height.
   Previously Arial text was drawn ~1.4× too large.
+
+## All sample files checked (2026-10-04)
+* 5 DWGs in `Desktop/New folder` (29k–86k entities): all open; ~180k block attributes all within
+  normal distance of their attribute definitions after repair.
+* Hatches were never drawn: acad-ts names the class `_Hatch` (also `_Viewport`). Entity types are
+  now resolved from the library's export names (`CLASS_NAMES` in acadImport.ts), which survive
+  minification — `keepNames` is no longer needed.
+* Doubled attribute transforms are detected per insert by comparing both hypotheses with the
+  attribute definitions (also catches inserts near the origin, e.g. Miami ODFXBOX at 1250,0).
+* Not rendered: OLE objects (embedded Excel/images, 1–9 per file).
+* Projects imported before this fix keep their missing hatches: re-import the file to get them.

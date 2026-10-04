@@ -119,7 +119,7 @@ function hatchLoops(h: AnyObj, flip: boolean): HatchLoop[] {
       if (b) hasBulge = true;
     };
     for (const edge of path.edges ?? []) {
-      const name = edge.constructor?.name;
+      const name = cls(edge);
       try {
         if (name === 'HatchBoundaryPathPolyline') {
           const bl = edge.bulges ?? [];
@@ -161,9 +161,23 @@ const DIM_TYPES: Record<string, any> = {
   DimensionRadius: 'radius', DimensionDiameter: 'diameter', DimensionOrdinate: 'ordinate', DimensionArc: 'arc',
 };
 
+/**
+ * acad-ts class name of an object, taken from the library's export names: those survive
+ * minification, while `constructor.name` does not (and keeping class names in the build slows
+ * the DWG reader down 2× on older Android WebViews). Some classes are named with a leading
+ * underscore internally (`_Hatch`, `_Viewport`) but exported without it.
+ */
+const CLASS_NAMES = new Map<unknown, string>();
+for (const [k, v] of Object.entries(A)) if (typeof v === 'function' && !CLASS_NAMES.has(v)) CLASS_NAMES.set(v, k.replace(/^_+/, ''));
+function cls(o: AnyObj | null | undefined): string {
+  const c = o?.constructor;
+  if (!c) return '';
+  return CLASS_NAMES.get(c) ?? ((c.name as string | undefined) ?? '').replace(/^_+/, '');
+}
+
 /** Convert a single acad-ts entity. Returns null for unsupported/irrelevant entities. */
 export function convertEntity(e: AnyObj, ctx: ImportContext): Entity | Entity[] | null {
-  const name = e.constructor?.name as string;
+  const name = cls(e);
   try {
     switch (name) {
       case 'Line':
@@ -396,7 +410,7 @@ const SKIP = new Set(['AttributeDefinition', 'Viewport', 'Seqend', 'Block', 'Blo
 function convertList(entities: Iterable<AnyObj>, ctx: ImportContext, counts?: Record<string, number>): Entity[] {
   const out: Entity[] = [];
   for (const e of entities) {
-    const n = e.constructor?.name;
+    const n = cls(e);
     if (SKIP.has(n)) continue;
     const c = convertEntity(e, ctx);
     if (!c && counts) counts[n] = (counts[n] ?? 0) + 1;
@@ -413,7 +427,7 @@ function findGeoData(doc: AnyObj): GeoInfo | undefined {
     if (typeof xd.entries === 'function') for (const e of xd.entries()) entries.push(Array.isArray(e) ? e[1] : e);
     else if (xd._entries) for (const v of xd._entries.values()) entries.push(v);
     for (const o of entries) {
-      if (o?.constructor?.name === 'GeoData') {
+      if (cls(o) === 'GeoData') {
         return {
           designPoint: P(o.designPoint), referencePoint: P(o.referencePoint),
           northDirection: P(o.northDirection), unitScale: o.horizontalUnitScale || 1,

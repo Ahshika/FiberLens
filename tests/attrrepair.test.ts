@@ -42,3 +42,17 @@ describe('attribute repair (acad-ts double transform)', () => {
     expect(attrOf(d)).toMatchObject({ p: start, p2: align, rot: ROT, h: DEF.h * S });
   });
 });
+
+describe('attribute repair near the drawing origin', () => {
+  it('detects a doubled transform even when it does not push the text far away', () => {
+    // Miami ODFXBOX case: insert at (1250,0), rot 0, scale 1 → doubled text lands only 1250 units away
+    const d = emptyDrawing('t');
+    d.blocks.ODF = { name: 'ODF', base: { x: 0, y: 0 }, entities: [], attdefs: [{ tag: 'ODFNO', value: '', p: { x: 1.98, y: 14.97 }, h: 9, rot: 0 }] } as any;
+    d.entities = [{ id: 1, type: 'insert', layer: '0', block: 'ODF', p: { x: 1250, y: 0 }, sx: 1, sy: 1, rot: 0, attribs: [{ id: 2, type: 'text', layer: '0', tag: 'ODFNO', value: '2', p: { x: 2501.98, y: 14.97 }, p2: { x: 0, y: 0 }, h: 9, rot: 0 }] } as unknown as Entity];
+    d.meta.attrRepair = 0;
+    repairAttributes(d);
+    const a = (d.entities[0] as any).attribs[0];
+    expect(a.p.x).toBeCloseTo(1251.98, 6);
+    expect(a.p2).toEqual(a.p);
+  });
+});
