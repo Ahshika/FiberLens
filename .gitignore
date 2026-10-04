@@ -7,3 +7,6 @@ android/.gradle
 *.log
 release/*.apk
 android/local.properties
+ios/App/build
+ios/DerivedData
+release/*.ipa

@@ -20,6 +20,7 @@
     "@capacitor/core": "^8.5.2",
     "@capacitor/filesystem": "^8.1.4",
     "@capacitor/geolocation": "^8.2.3",
+    "@capacitor/ios": "^8.5.2",
     "@capacitor/share": "^8.0.3",
     "@node-projects/acad-ts": "^3.2.0",
     "dexie": "^4.4.6",

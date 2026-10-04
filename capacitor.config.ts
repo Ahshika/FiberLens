@@ -9,6 +9,11 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
   },
+  ios: {
+    contentInset: 'never',
+    scrollEnabled: false,
+    backgroundColor: '#0d1117',
+  },
   plugins: {
     Geolocation: {},
   },

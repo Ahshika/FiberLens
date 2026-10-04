@@ -1,0 +1,58 @@
+# Builds the iPhone app on a GitHub-hosted Mac (Windows cannot build iOS apps).
+# Result: "FiberLens-ios" artifact with FiberLens-unsigned.ipa — install it with Sideloadly /
+# AltStore (they sign it with your Apple ID), or add signing secrets for TestFlight later.
+name: iOS build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync iOS project
+        run: npx cap sync ios
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry FiberLens-unsigned.ipa Payload
+          ls -la FiberLens-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FiberLens-ios
+          path: FiberLens-unsigned.ipa
+          retention-days: 30

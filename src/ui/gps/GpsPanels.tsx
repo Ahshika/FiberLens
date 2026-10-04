@@ -17,6 +17,7 @@ import { can } from '../../auth/session';
 import { downloadText } from '../../reports/download';
 import { tracksToGpx } from '../../reports/geoExport';
 import { isPhone } from '../useDevice';
+import { platform } from '../../platform/native';
 import { useT } from '../../app/i18n';
 
 /** One-shot point picker used by the calibration wizard and other modules. */
@@ -48,8 +49,16 @@ export function pickPoint(prompt: string): Promise<Vec2> {
   });
 }
 
+/** only offer receivers the platform can talk to (iOS WebViews have no Web Serial / Web Bluetooth / SPP) */
+function sourceAvailable(s: { id: string }) {
+  if (s.id === 'bt-spp') return platform() === 'android';
+  if (s.id === 'serial' || s.id === 'serial115') return 'serial' in navigator;
+  if (s.id === 'ble') return 'bluetooth' in navigator;
+  return true;
+}
+
 const SOURCES = [
-  { id: 'device', label: 'Phone GNSS (incl. external receivers via mock location)', icon: 'satellite' },
+  { id: 'device', label: platform() === 'ios' ? 'Phone GNSS (incl. MFi receivers: Bad Elf, Garmin GLO…)' : 'Phone GNSS (incl. external receivers via mock location)', icon: 'satellite' },
   { id: 'bt-spp', label: 'External GNSS / RTK · Bluetooth (Android app)', icon: 'bluetooth' },
   { id: 'serial', label: 'External GNSS · USB/Serial 9600', icon: 'usb' },
   { id: 'serial115', label: 'External GNSS · USB/Serial 115200 (RTK)', icon: 'usb' },
@@ -107,7 +116,7 @@ export function GpsPanel() {
 
       <div className="section">Source</div>
       <select value={g.sourceId} onChange={(e) => { g.set({ sourceId: e.target.value }); if (g.running) gpsController.start(e.target.value); }} style={{ width: '100%' }}>
-        {SOURCES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        {SOURCES.filter(sourceAvailable).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
 
       <div className="section">Modes</div>

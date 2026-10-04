@@ -152,6 +152,23 @@ import { openProject } from '../../data/projects';
 import { useApp } from '../../app/store';
 installNativeHandlers({
   onUrl: async (url) => {
+    // a drawing handed over by another app ("Open in FiberLens" from Files, WhatsApp, Mail…)
+    const fileName = decodeURIComponent(url.split(/[?#]/)[0].split('/').pop() ?? '');
+    if (/^(file|content):/i.test(url) && /\.(dwg|dxf)$/i.test(fileName)) {
+      try {
+        const { Filesystem } = await import('../../platform/native');
+        const r = await Filesystem.readFile({ path: url });
+        const bytes = typeof r.data === 'string' ? Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0)) : new Uint8Array(await r.data.arrayBuffer());
+        const { createProject, importDrawingFile } = await import('../../data/projects');
+        const p = await createProject({ name: fileName.replace(/\.(dwg|dxf)$/i, '') });
+        await importDrawingFile(p.id, fileName, bytes);
+        await openProject(p.id);
+      } catch (e) {
+        useApp.setState({ loading: null });
+        useApp.getState().toast(`Cannot open ${fileName}: ${(e as Error).message}`, 'error');
+      }
+      return;
+    }
     if (!url.startsWith('fiberlens://')) return;
     const r = parseQr(url);
     if (r?.projectId && currentProjectId() !== r.projectId && (await db.projects.get(r.projectId))) await openProject(r.projectId);
