@@ -89,3 +89,8 @@
 * Windows cannot build iOS: `.github/workflows/ios.yml` builds an unsigned IPA on a GitHub macOS
   runner (artifact "FiberLens-ios"). Install with Sideloadly/AltStore + Apple ID (free ID: re-sign
   every 7 days) or sign with an Apple Developer account for TestFlight.
+* Web app / PWA (no Apple device or account needed): manifest + icons, iOS meta tags, generated
+  service worker (`src/sw-template.js`, precaches every built file; verified: app + DWG engine
+  work with the server stopped). `.github/workflows/pages.yml` publishes it to GitHub Pages.
+  iPhone: Safari → Share → Add to Home Screen. iOS tweaks: file picker accepts all files (iOS greys
+  out .dwg), exports go through the share sheet ("Save to Files"), persistent storage requested.

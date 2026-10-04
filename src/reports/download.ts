@@ -3,6 +3,7 @@
  * Documents/FiberLens and offered through the system share sheet (email, WhatsApp, Drive…).
  */
 import { isNative, Filesystem, Directory, Share } from '../platform/native';
+import { isIOS } from '../platform/ios';
 
 function toBase64(data: Uint8Array): string {
   let s = '';
@@ -25,6 +26,14 @@ export async function downloadBytes(name: string, data: Uint8Array | Blob, mime 
     return res.uri;
   }
   const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: mime });
+  // iPhone web app: <a download> opens a preview (or nothing in home-screen mode); the share sheet
+  // offers "Save to Files", WhatsApp, Mail…
+  if (isIOS() && typeof navigator.share === 'function') {
+    const file = new File([blob], safe, { type: mime.split(';')[0] });
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: safe }); return safe; } catch (e) { if ((e as Error).name === 'AbortError') return safe; }
+    }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = safe;

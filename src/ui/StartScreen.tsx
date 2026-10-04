@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/store';
 import { Icon, Logo } from './icons';
 import { useSession, initSession, login, setupAdmin, logout, ROLE_LABEL, can } from '../auth/session';
+import { isIOS } from '../platform/ios';
 import { listProjects, createProject, importDrawingFile, openProject, newBlankDrawing, deleteProject } from '../data/projects';
 import type { ProjectRow } from '../data/db';
 import { ask, confirmDialog } from '../app/dialogs';
@@ -127,7 +128,7 @@ export function StartScreen() {
             <div className="start-actions">
               <button className="btn primary" onClick={() => fileRef.current?.click()} disabled={!can('project.manage') && !can('cad.edit')}><Icon name="import" />{t('Open DWG / DXF')}</button>
               <button className="btn" onClick={newEmpty} disabled={!can('project.manage')} title={t('New blank project')}><Icon name="plus" />{t('New blank project')}</button>
-              <input ref={fileRef} type="file" accept=".dwg,.dxf" style={{ display: 'none' }} onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }} />
+              <input ref={fileRef} type="file" accept={isIOS() ? undefined : '.dwg,.dxf'} style={{ display: 'none' }} onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }} />
             </div>
             <div className={`dropzone ${over ? 'over' : ''}`} style={{ marginBottom: 20 }}>
               {t('Drop a DWG or DXF file here. The original is stored read-only; you always edit a project copy.')}
