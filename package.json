@@ -7,7 +7,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "check-cad": "tsx scripts/check-cad.ts"
   },
   "keywords": [],
   "author": "",
