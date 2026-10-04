@@ -235,7 +235,16 @@ export class CadView {
       this.viewChanged();
       return;
     }
-    // robust extents from live geometry (ignores stray objects far from the drawing)
+    const r = this.robustExtents();
+    if (r) this.cam.fit(r, 0.08);
+    else this.cam.fit({ minX: m.extMin.x, minY: m.extMin.y, maxX: m.extMax.x, maxY: m.extMax.y });
+    this.viewChanged();
+  }
+
+  /** extents of the visible model geometry, ignoring stray objects far from the drawing (1–99 % quantiles) */
+  robustExtents(): BBox | null {
+    const d = this.doc;
+    if (!d) return null;
     const xs: number[] = [], ys: number[] = [];
     const step = Math.max(1, Math.floor(d.size / 30000));
     let i = 0;
@@ -246,15 +255,10 @@ export class CadView {
       if (!b) continue;
       xs.push((b.minX + b.maxX) / 2); ys.push((b.minY + b.maxY) / 2);
     }
-    if (xs.length < 10) {
-      this.cam.fit({ minX: m.extMin.x, minY: m.extMin.y, maxX: m.extMax.x, maxY: m.extMax.y });
-    } else {
-      xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
-      const q = (a: number[], f: number) => a[Math.floor((a.length - 1) * f)];
-      const x1 = q(xs, 0.01), x2 = q(xs, 0.99), y1 = q(ys, 0.01), y2 = q(ys, 0.99);
-      this.cam.fit({ minX: x1, minY: y1, maxX: x2, maxY: y2 }, 0.08);
-    }
-    this.viewChanged();
+    if (xs.length < 10) return null;
+    xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
+    const q = (a: number[], f: number) => a[Math.floor((a.length - 1) * f)];
+    return { minX: q(xs, 0.01), minY: q(ys, 0.01), maxX: q(xs, 0.99), maxY: q(ys, 0.99) };
   }
 
   zoomToBox(b: BBox, minSize = 0) {

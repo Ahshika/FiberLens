@@ -44,3 +44,17 @@
   recovery, Settings → Graphics renderer (auto / WebGL / Canvas). Layer-style textures are now
   keyed per scene (switching drawings could keep stale layer tables).
 * Memory: streamed JSON-lines snapshot codec, no snapshot clones, import result reused on open.
+
+## GPS — automatic georeference (2026-10-04)
+* Drawings already in real coordinates are georeferenced on open, no GPS or control points
+  needed: the median entity point is tested against WGS84 UTM 36N/35N/37N and the Egypt 1907
+  belts (`guessCrsFromPoint`, tests in `tests/crsguess.test.ts`). The Alexandria samples →
+  UTM 36N, Khorshed (31.2066 N, 30.0323 E). Existing projects are calibrated on next open.
+* Ambiguous zone numbers default to 36N; the first real GPS fix re-checks and switches CRS if
+  another one puts the user inside the drawing.
+* No more "Could not obtain location in time": a slow first fix is a soft "still searching"
+  status, the watch is re-armed, and a recent cached fix (≤15 s) is used at once.
+* Locate me far from the drawing (> 2 km): shows the distance and zooms to show both.
+* Verified: GPS fix → CAD round-trip exact on a cable vertex; marker rendered on the street map.
+  (The Android emulator's Play-services location ignores mock fixes, so the device path was
+  verified up to the permission/watch stage.)

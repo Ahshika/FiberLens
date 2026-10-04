@@ -11,6 +11,10 @@ declare global { interface Window { Capacitor?: any } }
  * Geolocation plugin is used when present (permissions + background-safe); external
  * receivers that publish an Android mock location are picked up transparently.
  */
+/** soft status reported while no fix has arrived yet (not an error) */
+export const SEARCHING = 'Still searching for satellites — move outdoors with a clear view of the sky';
+const isTimeout = (m: string) => /time ?out|in time/i.test(m);
+
 export class DeviceGpsSource implements GpsSource {
   readonly id = 'device';
   readonly label = 'Phone GNSS';
@@ -42,16 +46,30 @@ export class DeviceGpsSource implements GpsSource {
       try {
         const perm = await this.plugin.checkPermissions();
         if (perm.location !== 'granted') await this.plugin.requestPermissions();
-        this.watch = await this.plugin.watchPosition({ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }, (pos: any, err: any) => {
-          if (err) onError(err.message ?? String(err)); else if (pos) handle(pos);
-        });
+        // A cold first fix can take minutes (indoors, between buildings): never give up on a
+        // timeout — report it softly and re-arm the watch. A recent cached fix shows something at once.
+        const arm = async () => {
+          this.watch = await this.plugin.watchPosition({ enableHighAccuracy: true, timeout: 60000, maximumAge: 15000 }, (pos: any, err: any) => {
+            if (pos) { handle(pos); return; }
+            if (!err) return;
+            const msg = err.message ?? String(err);
+            if (isTimeout(msg)) {
+              onError(SEARCHING);
+              const id = this.watch;
+              this.plugin.clearWatch({ id }).catch(() => {});
+              setTimeout(() => { if (this.watch === id) arm().catch((e) => onError((e as Error).message)); }, 1000);
+            } else onError(msg);
+          });
+        };
+        await arm();
         return;
       } catch (err) {
         onError((err as Error).message);
       }
     }
     if (!('geolocation' in navigator)) { onError('Geolocation is not available on this device'); return; }
-    this.watch = navigator.geolocation.watchPosition(handle, (e) => onError(e.message || 'Location error'), { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+    // browsers keep a watch alive after a timeout error, so only the message is softened
+    this.watch = navigator.geolocation.watchPosition(handle, (e) => onError(e.code === 3 ? SEARCHING : e.message || 'Location error'), { enableHighAccuracy: true, maximumAge: 15000, timeout: 60000 });
   }
 
   stop() {

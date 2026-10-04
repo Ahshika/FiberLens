@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGps } from '../../gps/gpsStore';
+import { SEARCHING } from '../../gps/sources';
 import { useApp } from '../../app/store';
 
 export function GpsPill() {
@@ -7,7 +8,7 @@ export function GpsPill() {
   const setPanel = (p: any) => useApp.getState().set({ panel: p });
   let cls = '', text = 'GPS off';
   if (g.running) {
-    if (g.error && !g.fix) { cls = 'err'; text = 'GPS error'; }
+    if (g.error && !g.fix && g.error !== SEARCHING) { cls = 'err'; text = 'GPS error'; }
     else if (!g.fix) { cls = 'warn'; text = 'Searching…'; }
     else {
       const acc = g.fix.accuracy;

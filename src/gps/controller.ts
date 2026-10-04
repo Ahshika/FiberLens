@@ -1,6 +1,6 @@
 import { useGps, type TrackPoint } from './gpsStore';
 import type { GpsFix, GpsSource } from './types';
-import { DeviceGpsSource, SerialNmeaSource, BleNmeaSource, SimulatorSource, BluetoothSppSource } from './sources';
+import { SEARCHING, DeviceGpsSource, SerialNmeaSource, BleNmeaSource, SimulatorSource, BluetoothSppSource } from './sources';
 import { ask } from '../app/dialogs';
 import { geoToCad, cadToGeo, headingToCadAngle, isUsable, type Calibration } from '../geo/calibration';
 import { app } from '../app/controller';
@@ -80,8 +80,10 @@ class GpsController {
     this.startCompass();
     this.keepAwake(true);
     await src.start((f) => this.handleFix(f), (e) => {
+      const soft = e === SEARCHING;
+      if (soft && useGps.getState().error === e) return;
       useGps.getState().set({ error: e });
-      useApp.getState().toast('GPS: ' + e, 'error');
+      useApp.getState().toast('GPS: ' + e, soft ? 'info' : 'error');
     });
   }
 
@@ -103,14 +105,38 @@ class GpsController {
     app.view?.invalidateOverlay();
   }
 
+  private zoneChecked: string | null = null;
+
+  /**
+   * Auto-detected CRSs are guessed from coordinates alone; the same numbers can be valid in two
+   * UTM zones. On the first real fix, if the position is outside the drawing but another CRS
+   * would put it inside, switch to that CRS.
+   */
+  private async checkAutoZone(cal: Calibration, f: GpsFix) {
+    if (cal.source !== 'auto-detect' || this.zoneChecked === cal.id) return;
+    this.zoneChecked = cal.id;
+    const ext = app.view?.robustExtents();
+    if (!ext) return;
+    const { detectCrs, getCrs } = await import('../geo/crs');
+    const cands = detectCrs(ext, f.lon, f.lat);
+    if (cands.find((c) => c.crs === cal.crs)?.inside) return;
+    const best = cands.find((c) => c.inside);
+    if (!best) return;
+    const next = { ...cal, crs: best.crs, updatedAt: Date.now() };
+    this.zoneChecked = next.id;
+    this.setCalibration(next);
+    useApp.getState().toast(`Coordinate system corrected from your GPS position: ${getCrs(best.crs)?.name ?? best.crs}`, 'success');
+  }
+
   private handleFix(f: GpsFix) {
     const st = useGps.getState();
     const cal = st.calibration;
+    if (cal && cal.source === 'auto-detect' && this.zoneChecked !== cal.id && (f.accuracy ?? 0) < 500) void this.checkAutoZone(cal, f);
     let cad: Vec2 | null = null;
     if (isUsable(cal)) {
       try { cad = geoToCad(cal, f.lat, f.lon); } catch { cad = null; }
     }
-    const patch: any = { fix: f, cad, fixCount: st.fixCount + 1 };
+    const patch: any = { fix: f, cad, fixCount: st.fixCount + 1, error: null };
     if (st.tracking) {
       const last = st.track[st.track.length - 1];
       const moved = !last || Math.hypot((cad?.x ?? 0) - (last.x ?? 0), (cad?.y ?? 0) - (last.y ?? 0)) / (cal?.unitsPerMeter ?? 1) > 1 || !cad;
@@ -207,7 +233,20 @@ class GpsController {
     const { cad, calibration } = useGps.getState();
     const view = app.view;
     if (!cad || !view) return;
-    const minScale = 2 / (calibration?.unitsPerMeter ?? 1); // ≥ 2 px per metre
+    const upm = calibration?.unitsPerMeter ?? 1;
+    // far outside the drawing (e.g. still in the office): say so instead of flying into empty space
+    const ext = view.robustExtents();
+    if (ext) {
+      const dx = Math.max(ext.minX - cad.x, 0, cad.x - ext.maxX), dy = Math.max(ext.minY - cad.y, 0, cad.y - ext.maxY);
+      const away = Math.hypot(dx, dy) / upm;
+      if (away > 2000) {
+        const pad = Math.hypot(dx, dy) * 0.1;
+        view.zoomToBox({ minX: Math.min(ext.minX, cad.x) - pad, minY: Math.min(ext.minY, cad.y) - pad, maxX: Math.max(ext.maxX, cad.x) + pad, maxY: Math.max(ext.maxY, cad.y) + pad });
+        useApp.getState().toast(`You are ${(away / 1000).toFixed(1)} km outside the drawing area — the marker shows where you are relative to it.`, 'info');
+        return;
+      }
+    }
+    const minScale = 2 / upm; // ≥ 2 px per metre
     view.centerOn(cad.x, cad.y, Math.max(view.cam.scale, minScale));
   }
 

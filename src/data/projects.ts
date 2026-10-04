@@ -1,4 +1,4 @@
-import { db, uid, type ProjectRow, type VersionRow, type DrawingRow } from './db';
+import { db, uid, type ProjectRow, type VersionRow, type DrawingRow, type CalibrationRow } from './db';
 import { packJson, unpackJson, sha256 } from './compress';
 import { app } from '../app/controller';
 import { useApp } from '../app/store';
@@ -78,6 +78,22 @@ async function maybeCalibrationFromGeoData(projectId: string, drawingId: string,
   await db.drawings.update(drawingId, { calibrationId: cal.id });
 }
 
+/**
+ * Drawings already drawn in real projected coordinates (UTM 36N, Egyptian belts…) are
+ * georeferenced on open without any GPS or control points; the user can refine later.
+ */
+async function autoCalibrate(projectId: string, drawingId: string, d: Drawing): Promise<CalibrationRow | undefined> {
+  const { guessCrsFromPoint, medianPoint, getCrs } = await import('../geo/crs');
+  const mp = medianPoint(d.entities);
+  const g = mp && guessCrsFromPoint(mp.x, mp.y);
+  if (!g) return undefined;
+  const cal: Calibration = solveCalibration({ id: uid(), drawingId, mode: 'crs', crs: g.crs, method: 'translation', points: [], m: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, rms: 0, unitsPerMeter: 1, northAngle: Math.PI / 2, updatedAt: Date.now(), source: 'auto-detect' });
+  await db.calibrations.put({ ...cal, projectId });
+  await db.drawings.update(drawingId, { calibrationId: cal.id });
+  useApp.getState().toast(`Georeferenced automatically: ${getCrs(g.crs)?.name ?? g.crs} (${g.lat.toFixed(4)}, ${g.lon.toFixed(4)}). GPS will show your position in the drawing — refine with a control point if needed.`, 'success');
+  return { ...cal, projectId };
+}
+
 export async function newBlankDrawing(projectId: string, name = 'Drawing'): Promise<string> {
   const d = emptyDrawing(name);
   const drawingId = uid();
@@ -116,7 +132,8 @@ export async function openProject(projectId: string, drawingId?: string) {
     open.unsub = app.doc!.onCommit((tx, kind) => appendJournal(tx, kind));
     useApp.setState({ dirty: false, canUndo: false, canRedo: false });
     // calibration
-    const cal = row.calibrationId ? await db.calibrations.get(row.calibrationId) : (await db.calibrations.where('drawingId').equals(did).first());
+    let cal = row.calibrationId ? await db.calibrations.get(row.calibrationId) : (await db.calibrations.where('drawingId').equals(did).first());
+    if (!cal) cal = await autoCalibrate(projectId, did, app.doc!.live());
     gpsController.setCalibration(cal ? solveCalibration(cal) : null, false);
     // saved tracks
     gpsController.shownTracks = [];

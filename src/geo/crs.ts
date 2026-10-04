@@ -124,3 +124,43 @@ export function haversine(lat1: number, lon1: number, lat2: number, lon2: number
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
+
+/** Egypt (with a small margin) — the systems we can recognise from coordinates alone */
+const EGYPT = { minLon: 24.3, maxLon: 37.2, minLat: 21.3, maxLat: 32.0 };
+const inEgypt = (g: { lon: number; lat: number }) => g.lon >= EGYPT.minLon && g.lon <= EGYPT.maxLon && g.lat >= EGYPT.minLat && g.lat <= EGYPT.maxLat;
+
+/**
+ * Guess the projected CRS of a drawing from a representative point (median of entity
+ * coordinates) — no GPS needed. Only unambiguous Egyptian systems are recognised:
+ * WGS84 UTM 36N/35N/37N (northings 2.3–3.6 M) and the Egypt 1907 belts (northings < 1.6 M).
+ * Egyptian practice extends UTM 36N west to Alexandria, so 36N wins from 28°E eastwards.
+ */
+export function guessCrsFromPoint(x: number, y: number): { crs: string; lon: number; lat: number } | null {
+  const tryCrs = (crs: string, ok: (g: { lon: number; lat: number }) => boolean) => {
+    try {
+      const g = unproject(crs, x, y);
+      return Number.isFinite(g.lon) && Number.isFinite(g.lat) && inEgypt(g) && ok(g) ? { crs, ...g } : null;
+    } catch { return null; }
+  };
+  if (x > 100000 && x < 900000 && y > 2300000 && y < 3600000) {
+    return tryCrs('EPSG:32636', (g) => g.lon >= 28) ?? tryCrs('EPSG:32635', (g) => g.lon < 30) ?? tryCrs('EPSG:32637', () => true);
+  }
+  if (x > 0 && x < 1300000 && y > 0 && y < 1600000) {
+    return tryCrs('EPSG:22992', (g) => g.lon >= 29 && g.lon <= 33.5) ?? tryCrs('EPSG:22991', (g) => g.lon > 33) ?? tryCrs('EPSG:22994', (g) => g.lon < 29.5 && g.lat < 26) ?? tryCrs('EPSG:22993', (g) => g.lon < 29.5);
+  }
+  return null;
+}
+
+/** representative point of a set of entities: per-axis median of one vertex per entity */
+export function medianPoint(entities: readonly any[]): { x: number; y: number } | null {
+  const xs: number[] = [], ys: number[] = [];
+  const step = Math.max(1, Math.floor(entities.length / 20000));
+  for (let i = 0; i < entities.length; i += step) {
+    const e = entities[i];
+    const p = e.p ?? e.p1 ?? e.c ?? (e.pts?.length >= 2 ? { x: e.pts[0], y: e.pts[1] } : e.ctrl?.length >= 2 ? { x: e.ctrl[0], y: e.ctrl[1] } : null);
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) { xs.push(p.x); ys.push(p.y); }
+  }
+  if (!xs.length) return null;
+  xs.sort((a, b) => a - b); ys.sort((a, b) => a - b);
+  return { x: xs[xs.length >> 1], y: ys[ys.length >> 1] };
+}
