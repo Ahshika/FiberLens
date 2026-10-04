@@ -10,3 +10,9 @@ android/local.properties
 ios/App/build
 ios/DerivedData
 release/*.ipa
+.claude
+.wrangler
+.netlify
+.env
+*.jks
+*.keystore

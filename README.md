@@ -1,5 +1,12 @@
 # FiberLens — Smart CAD + FTTH Field Engineering Platform
 
+![TypeScript](https://img.shields.io/badge/TypeScript-React%20%2B%20Vite-3178C6?logo=typescript&logoColor=white)
+![WebGL2](https://img.shields.io/badge/renderer-WebGL2-990000)
+![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web-informational)
+![Offline](https://img.shields.io/badge/works-offline-success)
+
+**Live web app:** https://fiberlens.pages.dev
+
 **Your DWG is the map.** FiberLens opens DWG/DXF drawings on Android tablets/phones and the
 desktop browser, edits them like a CAD program, puts your live GPS position *inside* the drawing,
 and understands FTTH networks (FAT/FDT/FDH/closures/cables/cores/splitters) for field work,
@@ -10,6 +17,16 @@ as-built, maintenance, BOQ and reports — fully offline.
 > داخل ملف الـCAD نفسه** بدون أي خريطة منفصلة. يفهم عناصر الشبكة (FAT / FDT / FDH / Closure /
 > الكابلات / الشعيرات / الـSplitters)، ويعمل Trace للمسار حتى الـOLT، ويدعم المسح الميداني والصور
 > والملاحظات والـAs-Built والصيانة والـBOQ والتقارير — وكل ذلك يعمل بدون إنترنت.
+
+<p align="center">
+  <img src="docs/images/gps-you-are-here.png" width="860" alt="Live GPS position inside the DWG">
+</p>
+
+| Whole drawing (WebGL2, layers, FTTH objects) | On a phone in the field |
+|---|---|
+| <img src="docs/images/drawing-overview.png" alt="Drawing overview"> | <img src="docs/images/mobile-gps.png" width="300" alt="Mobile GPS"> |
+
+<sub>Screenshots use [`docs/samples/FTTH-Demo-Area.dxf`](docs/samples/FTTH-Demo-Area.dxf), a synthetic drawing (not a real network) with the built-in GPS simulator. Open it in the app to try everything without your own files.</sub>
 
 ## Quick start
 
@@ -27,7 +44,7 @@ npm run build && npx cap sync android
 cd android && ./gradlew assembleDebug      # → android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-A pre-built debug APK is in [`release/FiberLens-debug.apk`](release/).
+APK files are build outputs and are not committed to the repository; build one with the commands above.
 
 ## What is inside
 
