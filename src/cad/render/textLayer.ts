@@ -16,6 +16,20 @@ export function fontFamilyFor(font?: string): string {
 
 const CAP = 0.72;
 
+/**
+ * AutoCAD sizes SHX text by its capital height but TrueType text by the em (capitals ≈ 72 % of
+ * the height). Style fonts are stored without extension, so recognise the SHX family by name
+ * (Autodesk's TrueType look-alikes end in "__", e.g. romanc__).
+ */
+export function isShxFont(font?: string): boolean {
+  const f = (font || '').toLowerCase();
+  if (!f) return true; // Standard style default: txt.shx
+  if (/__$/.test(f)) return false;
+  return /^(txt|simplex|romans|romand|romant|romanc|isocp|iso|isoct|isocteur|gdt|amgdt|complex|italic|italicc|italict|scripts|scriptc|greeks|greekc|gothice|gothicg|gothici|monotxt|syastro|symap|symath|symeteo|symusic|bigfont|chineset|extfont|hztxt|gbcbig|gbenor|gbeitc|whgtxt|whgdtxt|aehalf|aefull)/.test(f) || /\.shx$/.test(f);
+}
+/** capital-letter height (in the same unit as the text height) */
+export const capHeightOf = (h: number, font?: string) => (isShxFont(font) ? h : h * CAP);
+
 export class TextLayer {
   ctx: CanvasRenderingContext2D;
   lastMs = 0;
@@ -76,11 +90,13 @@ export class TextLayer {
       const color = rgbToHex(rgb);
       const n = it.lines.length;
       const gap = px * 1.666 * (it.lineSpacing || 1);
+      const shx = isShxFont(it.font);
+      const cap = shx ? px : px * CAP; // on-screen capital height
       let firstBase: number; // screen y (down) of first baseline relative to anchor
       switch (it.valign) {
-        case 'top': firstBase = px; break;
-        case 'middle': firstBase = px - ((n - 1) * gap + px) / 2; break;
-        case 'bottom': firstBase = -(n - 1) * gap - px * 0.25; break;
+        case 'top': firstBase = cap; break;
+        case 'middle': firstBase = cap - ((n - 1) * gap + cap) / 2; break;
+        case 'bottom': firstBase = -(n - 1) * gap - cap * 0.25; break;
         default: firstBase = 0;
       }
       if (px < 4) {
@@ -88,13 +104,13 @@ export class TextLayer {
         ctx.fillStyle = color;
         ctx.globalAlpha = alpha * 0.45;
         for (let i = 0; i < n; i++) {
-          const w = it.lines[i].length * px * 0.62 * it.widthFactor;
+          const w = it.lines[i].length * cap * 0.86 * it.widthFactor;
           const x0 = it.halign === 'center' ? -w / 2 : it.halign === 'right' ? -w : 0;
-          ctx.fillRect(x0, firstBase + i * gap - px, w, px);
+          ctx.fillRect(x0, firstBase + i * gap - cap, w, cap);
         }
         continue;
       }
-      const fpx = px / CAP;
+      const fpx = cap / CAP;
       ctx.font = `${it.italic ? 'italic ' : ''}${it.bold ? 'bold ' : ''}${fpx.toFixed(2)}px ${fontFamilyFor(it.font)}`;
       ctx.fillStyle = color;
       ctx.textBaseline = 'alphabetic';

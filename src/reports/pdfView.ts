@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { CadView } from '../cad/render/CadView';
 import { geometryOf, transformGeom } from '../cad/geom/tessellate';
+import { capHeightOf } from '../cad/render/textLayer';
 import { walkInsert, resolveStyle, type InheritedStyle } from '../cad/geom/blocks';
 import { aciToRgb } from '../cad/model/color';
 import type { Entity } from '../cad/model/types';
@@ -77,7 +78,7 @@ export function exportViewPdf(view: CadView, o: PdfOptions): Uint8Array {
         const hmm = t.h * cam.scale * k;
         if (hmm < 0.6) continue;
         const [x, y] = toP(t.x, t.y);
-        doc.setFontSize(Math.max(2, hmm / 0.3528 / 0.72));
+        doc.setFontSize(Math.max(2, capHeightOf(hmm, t.font) / 0.3528 / 0.72));
         doc.setTextColor((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
         const ang = ((t.rot - cam.rotation) * 180) / Math.PI;
         const ascii = t.lines.join(' ').replace(/[^\x20-\x7e°±Ø]/g, '?');

@@ -259,6 +259,8 @@ export interface DrawingMeta {
   pdSize?: number;
   /** warnings/notes emitted by the engine */
   notes: string[];
+  /** version of the attribute repair already applied to this drawing (see cad/io/repair.ts) */
+  attrRepair?: number;
 }
 
 export interface Drawing {

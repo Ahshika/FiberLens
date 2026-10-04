@@ -58,3 +58,13 @@
 * Verified: GPS fix → CAD round-trip exact on a cable vertex; marker rendered on the street map.
   (The Android emulator's Play-services location ignores mock fixes, so the device path was
   verified up to the permission/watch stage.)
+
+## Text fix — block attributes upside-down / misplaced (2026-10-04)
+* acad-ts transforms ATTRIB insertion point, rotation and height by the INSERT a second time
+  (the alignment point is read correctly). Repair v2 (`cad/io/repair.ts`) undoes all three and
+  keeps the alignment point; v1 had kept the doubled rotation (texts upside down, e.g. "S01X")
+  and replaced the alignment point by the start point (centred labels shifted out of the
+  sub-box circles). Stored projects get a one-time legacy pass (`meta.attrRepair`).
+  Check on 003: 36,884 attributes, all match attdef rotation/height except 12 intentional 180° flips.
+* TrueType text is sized by the em (capitals ≈ 0.72 × height) like AutoCAD; SHX by capital height.
+  Previously Arial text was drawn ~1.4× too large.

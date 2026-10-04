@@ -495,8 +495,9 @@ export function importCadDocument(doc: AnyObj, fileName: string, format: 'dwg' |
 
   // model space
   d.entities = convertList(doc.modelSpace?.entities ?? [], ctx, unconverted);
+  d.meta.attrRepair = 0; // raw reader output: no legacy pass
   const fixed = repairAttributes(d);
-  if (fixed) ctx.notes.push(`${fixed} block attribute positions corrected (reader double-transform)`);
+  if (fixed) ctx.notes.push(`${fixed} block attributes corrected (reader double-transform: position, rotation, height)`);
 
   // layouts (paper space) — basic support
   try {
