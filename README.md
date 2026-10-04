@@ -5,7 +5,7 @@
 ![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web-informational)
 ![Offline](https://img.shields.io/badge/works-offline-success)
 
-**Live web app:** https://fiberlens.pages.dev
+**Live web app:** https://fiberlens.pages.dev · mirror: https://ahshika.github.io/FiberLens/
 
 **Your DWG is the map.** FiberLens opens DWG/DXF drawings on Android tablets/phones and the
 desktop browser, edits them like a CAD program, puts your live GPS position *inside* the drawing,
