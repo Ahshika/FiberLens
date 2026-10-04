@@ -44,7 +44,7 @@ npm run build && npx cap sync android
 cd android && ./gradlew assembleDebug      # → android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-APK files are build outputs and are not committed to the repository; build one with the commands above.
+A ready-to-install APK is on the [Releases page](https://github.com/Ahshika/FiberLens/releases/latest).
 
 ## What is inside
 
