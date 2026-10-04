@@ -79,3 +79,13 @@
   attribute definitions (also catches inserts near the origin, e.g. Miami ODFXBOX at 1250,0).
 * Not rendered: OLE objects (embedded Excel/images, 1–9 per file).
 * Projects imported before this fix keep their missing hatches: re-import the file to get them.
+
+## iPhone (iOS) build (2026-10-04)
+* `ios/` Capacitor project (Swift Package Manager, no CocoaPods). Info.plist: location, camera,
+  photos, motion; DWG/DXF document types so "Open in FiberLens" from Files/WhatsApp imports the
+  drawing (handled in `ui/ftth/integration.tsx`); file sharing enabled.
+* GPS sources are filtered per platform (iOS: phone GNSS incl. MFi receivers + simulator; no
+  Bluetooth SPP / Web Serial / Web Bluetooth in WKWebView).
+* Windows cannot build iOS: `.github/workflows/ios.yml` builds an unsigned IPA on a GitHub macOS
+  runner (artifact "FiberLens-ios"). Install with Sideloadly/AltStore + Apple ID (free ID: re-sign
+  every 7 days) or sign with an Apple Developer account for TestFlight.
