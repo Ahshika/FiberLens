@@ -94,3 +94,5 @@
   work with the server stopped). `.github/workflows/pages.yml` publishes it to GitHub Pages.
   iPhone: Safari → Share → Add to Home Screen. iOS tweaks: file picker accepts all files (iOS greys
   out .dwg), exports go through the share sheet ("Save to Files"), persistent storage requested.
+* Live web app: https://fiberlens-ftth.netlify.app (Netlify project `fiberlens-ftth`).
+  Update: `npm run deploy:web` (needs `npx netlify-cli login` once on the machine).

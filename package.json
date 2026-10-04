@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc",
-    "check-cad": "tsx scripts/check-cad.ts"
+    "check-cad": "tsx scripts/check-cad.ts",
+    "deploy:web": "npm run build && netlify deploy --prod --dir dist --no-build --site f69eed7c-3c09-4e0f-ba94-aea4f54d7605"
   },
   "keywords": [],
   "author": "",
