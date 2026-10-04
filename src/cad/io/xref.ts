@@ -5,7 +5,8 @@ import type { CadDoc } from '../doc/CadDoc';
 export function listXrefs(d: Drawing): { name: string; path: string; loaded: boolean; inserts: number }[] {
   const out: { name: string; path: string; loaded: boolean; inserts: number }[] = [];
   for (const b of Object.values(d.blocks)) {
-    if (!b.xref) continue;
+    // ignore stale markers on blocks that already have content and are not real file references
+    if (!b.xref || b.xref === 'Acad:XRef' || (b.entities.length && !/\.(dwg|dxf)$/i.test(b.xref))) continue;
     const inserts = d.entities.filter((e) => e.type === 'insert' && e.block === b.name).length;
     out.push({ name: b.name, path: b.xref, loaded: b.entities.length > 0, inserts });
   }

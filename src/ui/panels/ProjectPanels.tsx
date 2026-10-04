@@ -14,6 +14,7 @@ import type { Drawing } from '../../cad/model/types';
 import { exportBackup, importBackup } from '../../data/backup';
 import { useDialog } from '../../app/dialogs';
 import { XrefSection } from './XrefSection';
+import { unpackDrawing } from '../../data/drawingCodec';
 import { isPhone } from '../useDevice';
 import { useT, useLang } from '../../app/i18n';
 
@@ -126,7 +127,7 @@ export function VersionsPanel() {
   const exportVersion = async (v: VersionRow) => {
     useApp.setState({ loading: `Exporting ${v.label}…` });
     try {
-      const d = unpackJson<Drawing>(v.snapshot);
+      const d = unpackDrawing(v.snapshot);
       const r = await exportCadFile(d, app.original, 'dwg');
       await downloadBytes(`${st.drawingName}_${v.label.replace(/\W+/g, '_')}.dwg`, r.bytes);
     } catch (e) { st.toast((e as Error).message, 'error'); }
@@ -173,6 +174,15 @@ export function SettingsPanel() {
       <div className="row" style={{ marginBottom: 8 }}>
         <button className={`btn sm ${lang === 'en' ? 'primary' : ''}`} onClick={() => setLang('en')}>English</button>
         <button className={`btn sm ${lang === 'ar' ? 'primary' : ''}`} onClick={() => setLang('ar')}>العربية</button>
+      </div>
+      <div className="section">Graphics renderer</div>
+      <div className="field">
+        <select defaultValue={(() => { try { return localStorage.getItem('fl.renderer') || 'auto'; } catch { return 'auto'; } })()} onChange={(e) => { try { localStorage.setItem('fl.renderer', e.target.value); } catch { /* ignore */ } st.toast('Restart the app to apply the renderer change', 'info'); }}>
+          <option value="auto">Auto (GPU with automatic compatibility fallback)</option>
+          <option value="webgl">GPU (WebGL2) — fastest</option>
+          <option value="canvas">Compatibility (Canvas) — use if the drawing stays black</option>
+        </select>
+        <div className="small muted">Active: <b>{v?.rendererInfo.kind === 'webgl' ? 'GPU (WebGL2)' : 'Compatibility (Canvas)'}</b>{v?.rendererInfo.reason ? ` — ${v.rendererInfo.reason}` : ''}</div>
       </div>
       <div className="section">Display</div>
       <label className="row"><input type="checkbox" checked={st.dark} onChange={(e) => app.setOption('dark', e.target.checked)} /> Dark canvas (ACI 7 = white)</label>

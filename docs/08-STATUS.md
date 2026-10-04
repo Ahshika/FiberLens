@@ -33,3 +33,14 @@
   permission flow works, tablet layout renders correctly.
 * Build: `npm run build && npx cap sync android && cd android && ./gradlew assembleDebug`
   (JDK 21 + Android SDK 36). For Play Store: `./gradlew bundleRelease` with your signing key.
+
+## Field fix — "drawing shows nothing on the phone" (2026-10-04)
+* **Root cause:** the importer identifies acad-ts entities by `constructor.name`; the production
+  build minified class names, so every entity was dropped on the APK (0 entities, black view)
+  while the dev server worked. Fixed with `esbuild.keepNames` in `vite.config.ts` — verified on
+  the phone emulator: `3-Alex_Khorshed_FTTH_003` → 50,820 entities rendered.
+* Fake Xref list (`Acad:XRef` placeholder on normal blocks) removed.
+* Renderer robustness: GPU self-test (readPixels) → automatic Canvas2D fallback, context-loss
+  recovery, Settings → Graphics renderer (auto / WebGL / Canvas). Layer-style textures are now
+  keyed per scene (switching drawings could keep stale layer tables).
+* Memory: streamed JSON-lines snapshot codec, no snapshot clones, import result reused on open.

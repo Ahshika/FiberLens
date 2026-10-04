@@ -311,6 +311,8 @@ export class CadDoc {
 
   clearHistory() { this.undoStack = []; this.redoStack = []; }
   snapshot(): Drawing { this.syncDrawingEntities(); return clone(this.drawing); }
+  /** the live drawing (no copy) — read-only use: serialisation, export, diff */
+  live(): Drawing { this.syncDrawingEntities(); return this.drawing; }
 }
 
 export function pointInLoops(p: Vec2, loops: number[][]): boolean {

@@ -32,6 +32,8 @@ export interface TextRec extends BBox {
   chunk: string;
 }
 
+export interface FillPoly { loops: Float32Array[]; color: number; alpha: number; flags: number; layer: number }
+
 export interface Chunk {
   key: string;
   ox: number;
@@ -46,6 +48,8 @@ export interface Chunk {
   maskData: ArrayBuffer | null;
   maskCount: number;
   texts: TextRec[];
+  /** fill polygons (chunk-relative) for the Canvas fallback renderer */
+  polys: FillPoly[];
   /** renderer-owned GPU resources */
   gpu?: any;
   gpuVersion: number;
@@ -140,7 +144,7 @@ export class Scene {
       const [ix, iy] = key.split(',').map(Number);
       c = {
         key, ox: (ix + 0.5) * this.cell, oy: (iy + 0.5) * this.cell, ids: new Set(), bbox: emptyBox(), dirty: true,
-        segData: null, segCount: 0, triData: null, triCount: 0, maskData: null, maskCount: 0, texts: [], gpuVersion: -1, version: 0,
+        segData: null, segCount: 0, triData: null, triCount: 0, maskData: null, maskCount: 0, texts: [], polys: [], gpuVersion: -1, version: 0,
       };
       this.chunks.set(key, c);
     }
@@ -245,6 +249,7 @@ export class Scene {
     // remove old texts from tree
     for (const t of c.texts) this.textTree.remove(t);
     c.texts = [];
+    c.polys = [];
     const bbox = emptyBox();
     const ltScaleGlobal = this.doc.drawing.meta.ltScale || 1;
     const blocks = this.doc.blocks;
@@ -265,7 +270,11 @@ export class Scene {
         }
         if (p.closed && n >= 6) this.pushSeg(seg, c, a[n - 2], a[n - 1], a[0], a[1], dist, ps);
       }
-      for (const f of g.fills) { this.pushFill(tri, c, f, ps); for (const l of f) boxAddPts(bbox, l); }
+      for (const f of g.fills) {
+        this.pushFill(tri, c, f, ps);
+        for (const l of f) boxAddPts(bbox, l);
+        c.polys.push({ loops: f.map((l) => { const a = new Float32Array(l.length); for (let i = 0; i < l.length; i += 2) { a[i] = l[i] - c.ox; a[i + 1] = l[i + 1] - c.oy; } return a; }), color: ps.color, alpha: ps.alpha, flags: ps.flags, layer: ps.layer });
+      }
       if (g.masks) for (const f of g.masks) { this.pushFill(mask, c, f, { ...ps, flags: ps.flags | F_MASK }); for (const l of f) boxAddPts(bbox, l); }
       for (const t of g.texts) {
         const corners = textCorners(t);

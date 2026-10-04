@@ -30,7 +30,7 @@ export function ExportPanel() {
     if (!app.doc) return;
     busy(`Exporting ${format.toUpperCase()}… (merging edits into the original)`);
     try {
-      const r = await exportCadFile(app.doc.snapshot(), app.original, format, ver);
+      const r = await exportCadFile(app.doc.live(), app.original, format, ver);
       const suffix = st.mode === 'asbuilt' ? '_AsBuilt' : '';
       await downloadBytes(`${name}${suffix}_${stamp()}.${format}`, r.bytes, format === 'dwg' ? 'image/vnd.dwg' : 'image/vnd.dxf');
       st.toast(`${format.toUpperCase()} exported · kept ${r.stats.kept}, modified ${r.stats.modified}, added ${r.stats.added}, deleted ${r.stats.deleted}${r.warnings.length ? ` · ${r.warnings.length} warnings` : ''}`, 'success');

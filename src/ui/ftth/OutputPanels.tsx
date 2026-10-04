@@ -142,7 +142,7 @@ export function ComparePanel() {
     let cur: Drawing;
     let ftthB: Record<string, any[]>;
     if (b === 'current') {
-      cur = app.doc!.snapshot();
+      cur = app.doc!.live();
       const s = useFtth.getState();
       ftthB = { ftthObjects: [...s.objects.values()], cables: [...s.cables.values()] };
     } else {

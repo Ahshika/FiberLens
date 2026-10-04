@@ -45,6 +45,9 @@ export class AppController {
     view.opts.lineweights = st.lineweights;
     view.opts.grid = st.grid;
     this.view = view;
+    const rinfo = (i: { kind: string; reason?: string }) => { if (i.kind === 'canvas') useApp.getState().toast('Compatibility renderer active (' + (i.reason ?? '') + ')', 'info'); };
+    rinfo(view.rendererInfo);
+    view.onRendererChange = rinfo;
     this.selection = new SelectionManager(view, () => this.doc);
     this.selection.onChange(() => useApp.setState((s) => ({ selRev: s.selRev + 1, selectionCount: this.selection!.size })));
     const host2: Omit<ToolHost, 'finish'> = {

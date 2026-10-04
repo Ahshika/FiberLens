@@ -1,6 +1,8 @@
 import { Camera } from './camera';
 import { Scene } from './scene';
 import { GlRenderer } from './glRenderer';
+import { CanvasRenderer } from './canvasRenderer';
+import { glSelfTest } from './selfTest';
 import { TextLayer } from './textLayer';
 import { CadDoc } from '../doc/CadDoc';
 import type { LayoutDef } from '../model/types';
@@ -27,7 +29,11 @@ export class CadView {
   cam = new Camera();
   scene: Scene | null = null;
   doc: CadDoc | null = null;
-  gl: GlRenderer;
+  gl: GlRenderer | CanvasRenderer;
+  /** which renderer is active and why */
+  rendererInfo: { kind: 'webgl' | 'canvas'; reason?: string } = { kind: 'webgl' };
+  private contextLosses = 0;
+  onRendererChange: ((info: { kind: string; reason?: string }) => void) | null = null;
   text: TextLayer;
   overlayCtx: CanvasRenderingContext2D;
   opts: ViewOptions = { dark: true, lineweights: false, grid: false, gridSpacing: 10, drawingAlpha: 1, showText: true };
@@ -48,7 +54,7 @@ export class CadView {
   layoutListeners = new Set<() => void>();
 
   constructor(public host: HTMLElement, public glCanvas: HTMLCanvasElement, public textCanvas: HTMLCanvasElement, public overlayCanvas: HTMLCanvasElement) {
-    this.gl = new GlRenderer(glCanvas);
+    this.gl = this.createRenderer();
     this.text = new TextLayer(textCanvas);
     this.overlayCtx = overlayCanvas.getContext('2d')!;
     this.resizeObs = new ResizeObserver(() => this.resize());
@@ -56,6 +62,66 @@ export class CadView {
     this.resize();
     this.loop = this.loop.bind(this);
     this.raf = requestAnimationFrame(this.loop);
+  }
+
+  /** renderer preference: 'auto' (WebGL2 + self-test, Canvas fallback) | 'webgl' | 'canvas' */
+  static preference(): 'auto' | 'webgl' | 'canvas' {
+    try { return (localStorage.getItem('fl.renderer') as any) || 'auto'; } catch { return 'auto'; }
+  }
+
+  private createRenderer(): GlRenderer | CanvasRenderer {
+    const pref = CadView.preference();
+    if (pref !== 'canvas') {
+      try {
+        const r = new GlRenderer(this.glCanvas);
+        const test = pref === 'webgl' ? { ok: true } : glSelfTest(r);
+        if (test.ok) {
+          this.glCanvas.addEventListener('webglcontextlost', this.onContextLost);
+          this.glCanvas.addEventListener('webglcontextrestored', this.onContextRestored);
+          this.rendererInfo = { kind: 'webgl' };
+          return r;
+        }
+        this.rendererInfo = { kind: 'canvas', reason: 'GPU self-test failed: ' + test.reason };
+      } catch (e) {
+        this.rendererInfo = { kind: 'canvas', reason: 'WebGL2 unavailable: ' + (e as Error).message };
+      }
+    } else this.rendererInfo = { kind: 'canvas', reason: 'selected in settings' };
+    return this.makeCanvasRenderer();
+  }
+
+  /** a canvas that already has a WebGL context cannot give a 2D one: swap in a fresh element */
+  private makeCanvasRenderer(): CanvasRenderer {
+    const fresh = document.createElement('canvas');
+    fresh.className = this.glCanvas.className;
+    this.glCanvas.replaceWith(fresh);
+    this.glCanvas = fresh;
+    return new CanvasRenderer(fresh);
+  }
+
+  private onContextLost = (e: Event) => {
+    e.preventDefault();
+    this.contextLosses++;
+    if (this.contextLosses >= 2) this.switchToCanvas('GPU context lost repeatedly');
+  };
+
+  private onContextRestored = () => {
+    if (this.gl.kind !== 'webgl') return;
+    try {
+      this.gl = new GlRenderer(this.glCanvas);
+      if (this.scene) (this.gl as GlRenderer).forgetChunks(this.scene);
+      if (this.layout) (this.gl as GlRenderer).forgetChunks(this.layout.scene);
+      this.invalidate();
+    } catch (err) { this.switchToCanvas('GPU restore failed: ' + (err as Error).message); }
+  };
+
+  switchToCanvas(reason: string) {
+    if (this.gl.kind === 'canvas') return;
+    this.glCanvas.removeEventListener('webglcontextlost', this.onContextLost);
+    this.glCanvas.removeEventListener('webglcontextrestored', this.onContextRestored);
+    this.gl = this.makeCanvasRenderer();
+    this.rendererInfo = { kind: 'canvas', reason };
+    this.onRendererChange?.(this.rendererInfo);
+    this.invalidate();
   }
 
   get background() { return this.opts.dark ? 0x0d1117 : 0xffffff; }
@@ -156,7 +222,7 @@ export class CadView {
     this.invalidate();
     this.interacting = true;
     clearTimeout(this.interactTimer);
-    this.interactTimer = setTimeout(() => { this.interacting = false; this.needText = true; }, 140);
+    this.interactTimer = setTimeout(() => { this.interacting = false; this.needText = true; this.needScene = true; }, 140);
     for (const l of this.viewListeners) l(this.cam);
   }
 
@@ -237,6 +303,7 @@ export class CadView {
     this.raf = requestAnimationFrame(this.loop);
     const t0 = performance.now();
     const scene = this.scene;
+    this.gl.interacting = this.interacting;
     if (scene && scene.pending) {
       scene.buildDirty(this.cam.viewBox(), this.interacting ? 6 : 14);
       this.needScene = true;
@@ -264,10 +331,7 @@ export class CadView {
         this.stats.chunks = this.gl.lastDrawStats.chunks;
         this.stats.gpuMB = this.gl.gpuBytes / 1048576;
       } else {
-        const gl = this.gl.gl;
-        const bg = this.background;
-        gl.clearColor(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        this.gl.clear(this.background);
       }
     }
     if (this.needText) {

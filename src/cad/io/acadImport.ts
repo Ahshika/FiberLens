@@ -483,7 +483,8 @@ export function importCadDocument(doc: AnyObj, fileName: string, format: 'dwg' |
       base: P(be?.basePoint),
       entities: convertList(br.entities, ctx, unconverted),
       anonymous: !!br.isAnonymous || name.startsWith('*'),
-      xref: be?.xRefPath || undefined,
+      // only real external references (block flags XRef=4 / Overlay=8); acad-ts fills a placeholder path otherwise
+      xref: ((br.blockFlags ?? br.flags ?? 0) & 12) && be?.xRefPath && be.xRefPath !== 'Acad:XRef' ? be.xRefPath : undefined,
     };
     try {
       const atts = br.attributeDefinitions as AnyObj[];

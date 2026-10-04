@@ -9,11 +9,15 @@ import { audit, useSession, require as requirePerm } from '../auth/session';
 import { gpsController } from '../gps/controller';
 import { solveCalibration, type Calibration } from '../geo/calibration';
 import { recordChange } from './sync';
+import { packDrawing, unpackDrawing } from './drawingCodec';
 import { repairAttributes } from '../cad/io/repair';
 
 /** FTTH tables included in version snapshots and backups */
 export const FTTH_TABLES = ['ftthObjects', 'cables', 'cores', 'splitters', 'splices'] as const;
 export const FIELD_TABLES = ['notes', 'surveys', 'surveyItems', 'faults', 'maintenance', 'tracks', 'calibrations'] as const;
+
+/** drawing parsed by the last import — reused by openProject instead of decoding it again */
+let justImported: { drawingId: string; drawing: Drawing } | null = null;
 
 interface OpenState { projectId: string; drawingId: string; seq: number; snapshotSeq: number; unsub: (() => void) | null }
 let open: OpenState | null = null;
@@ -46,7 +50,8 @@ export async function importDrawingFile(projectId: string, name: string, bytes: 
     const fileId = uid();
     await db.files.add({ id: fileId, projectId, kind: 'original', name, mime: /\.dxf$/i.test(name) ? 'image/vnd.dxf' : 'image/vnd.dwg', size: bytes.length, sha256: await sha256(bytes), data: bytes, createdAt: Date.now(), createdBy: useSession.getState().user?.id });
     const drawingId = uid();
-    const snap = packJson(drawing);
+    const snap = packDrawing(drawing);
+    justImported = { drawingId, drawing };
     await db.drawings.add({ id: drawingId, projectId, name: drawing.meta.name, originalFileId: fileId, snapshot: snap, journalSeq: 0, snapshotAt: Date.now(), entityCount: drawing.entities.length, updatedAt: Date.now() });
     await db.versions.add({ id: uid(), projectId, drawingId, number: 1, label: 'V1 (original import)', kind: 'import', snapshot: snap, createdAt: Date.now(), userId: useSession.getState().user?.id, userName: useSession.getState().user?.displayName, summary: `Imported ${name}: ${drawing.entities.length} entities, ${drawing.layers.length} layers`, entityCount: drawing.entities.length });
     await db.projects.update(projectId, { activeDrawingId: drawingId, updatedAt: Date.now() });
@@ -76,7 +81,7 @@ async function maybeCalibrationFromGeoData(projectId: string, drawingId: string,
 export async function newBlankDrawing(projectId: string, name = 'Drawing'): Promise<string> {
   const d = emptyDrawing(name);
   const drawingId = uid();
-  const snap = packJson(d);
+  const snap = packDrawing(d);
   await db.drawings.add({ id: drawingId, projectId, name, originalFileId: null, snapshot: snap, journalSeq: 0, snapshotAt: Date.now(), entityCount: 0, updatedAt: Date.now() });
   await db.versions.add({ id: uid(), projectId, drawingId, number: 1, label: 'V1 (new drawing)', kind: 'design', snapshot: snap, createdAt: Date.now(), userId: useSession.getState().user?.id, userName: useSession.getState().user?.displayName, summary: 'Blank drawing', entityCount: 0 });
   await db.projects.update(projectId, { activeDrawingId: drawingId, updatedAt: Date.now() });
@@ -98,7 +103,8 @@ export async function openProject(projectId: string, drawingId?: string) {
   if (!row) throw new Error('Drawing not found');
   useApp.setState({ loading: `Opening ${row.name}…` });
   try {
-    const drawing = unpackJson<Drawing>(row.snapshot);
+    const drawing = justImported?.drawingId === did ? justImported.drawing : unpackDrawing(row.snapshot);
+    justImported = null;
     repairAttributes(drawing); // projects imported before the attribute fix
     const original = row.originalFileId ? (await db.files.get(row.originalFileId))?.data ?? null : null;
     const journal = await db.journal.where('drawingId').equals(did).sortBy('seq');
@@ -140,8 +146,8 @@ function appendJournal(tx: Transaction, kind: 'do' | 'undo' | 'redo') {
 export async function compact(): Promise<{ snap: Uint8Array; drawing: Drawing } | undefined> {
   if (!open || !app.doc) return;
   const o = open;
-  const drawing = app.doc.snapshot();
-  const snap = packJson(drawing);
+  const drawing = app.doc.live();
+  const snap = packDrawing(drawing);
   await db.transaction('rw', db.drawings, db.journal, async () => {
     await db.drawings.update(o.drawingId, { snapshot: snap, journalSeq: o.seq, snapshotAt: Date.now(), entityCount: app.doc!.size, updatedAt: Date.now() });
     await db.journal.where('drawingId').equals(o.drawingId).delete();
@@ -196,14 +202,14 @@ export async function saveVersion(label?: string, kind: VersionRow['kind'] = 'de
     const c = await compact();
     const versions = await listVersions(o.drawingId);
     const last = versions[0];
-    const cur = c?.drawing ?? app.doc.snapshot();
-    const prev = last ? unpackJson<Drawing>(last.snapshot) : null;
+    const cur = c?.drawing ?? app.doc.live();
+    const prev = last ? unpackDrawing(last.snapshot) : null;
     const diff = diffSummary(prev, cur);
     const number = (last?.number ?? 0) + 1;
     const row: VersionRow = {
       id: uid(), projectId: o.projectId, drawingId: o.drawingId, number,
       label: label || (kind === 'asbuilt' ? `As-Built V${number}` : `V${number}`), kind,
-      snapshot: c?.snap ?? packJson(cur), ftth: await ftthSnapshot(o.projectId), createdAt: Date.now(),
+      snapshot: c?.snap ?? packDrawing(cur), ftth: await ftthSnapshot(o.projectId), createdAt: Date.now(),
       userId: useSession.getState().user?.id, userName: useSession.getState().user?.displayName,
       summary: diff.text + (note ? ` — ${note}` : ''), parentId: last?.id, entityCount: cur.entities.length,
     };
@@ -226,7 +232,7 @@ export async function restoreVersion(versionId: string, restoreFtth = true) {
   const v = await db.versions.get(versionId);
   if (!v) return;
   const o = open;
-  const drawing = unpackJson<Drawing>(v.snapshot);
+  const drawing = unpackDrawing(v.snapshot);
   await db.transaction('rw', [db.drawings, db.journal, ...FTTH_TABLES.map((t) => (db as any)[t])], async () => {
     await db.drawings.update(o.drawingId, { snapshot: v.snapshot, journalSeq: 0, snapshotAt: Date.now(), entityCount: drawing.entities.length, updatedAt: Date.now() });
     await db.journal.where('drawingId').equals(o.drawingId).delete();
@@ -246,7 +252,7 @@ export async function restoreVersion(versionId: string, restoreFtth = true) {
 
 export async function loadVersionDrawing(versionId: string): Promise<{ drawing: Drawing; row: VersionRow } | null> {
   const v = await db.versions.get(versionId);
-  return v ? { drawing: unpackJson<Drawing>(v.snapshot), row: v } : null;
+  return v ? { drawing: unpackDrawing(v.snapshot), row: v } : null;
 }
 
 export async function deleteProject(projectId: string) {

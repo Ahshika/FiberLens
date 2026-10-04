@@ -188,7 +188,9 @@ export interface RenderOptions {
 }
 
 export class GlRenderer {
+  readonly kind = 'webgl';
   gl: WebGL2RenderingContext;
+  interacting = false;
   private segProg: WebGLProgram;
   private triProg: WebGLProgram;
   private cornerBuf: WebGLBuffer;
@@ -196,6 +198,7 @@ export class GlRenderer {
   private layerPropsTex: WebGLTexture;
   private ltTex: WebGLTexture;
   private styleVersion = -1;
+  private styleScene: Scene | null = null;
   private themeKey = '';
   private segU: Record<string, WebGLUniformLocation | null> = {};
   private triU: Record<string, WebGLUniformLocation | null> = {};
@@ -222,7 +225,9 @@ export class GlRenderer {
 
   private updateStyleTextures(scene: Scene, opts: RenderOptions) {
     const theme = `${opts.dark}`;
-    if (this.styleVersion === scene.styles.version && this.themeKey === theme) return;
+    // keyed by scene too: versions of different scenes (e.g. the GPU self-test) can collide
+    if (this.styleScene === scene && this.styleVersion === scene.styles.version && this.themeKey === theme) return;
+    this.styleScene = scene;
     this.styleVersion = scene.styles.version;
     this.themeKey = theme;
     const gl = this.gl;
@@ -420,5 +425,16 @@ export class GlRenderer {
 
   dispose(scene?: Scene) {
     if (scene) for (const c of scene.chunks.values()) this.releaseChunk(c);
+    if (scene && scene === this.styleScene) this.styleScene = null;
   }
+
+  clear(bg: number) {
+    const gl = this.gl;
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+
+  /** forget GPU objects of every chunk (after a context loss) */
+  forgetChunks(scene: Scene) { for (const c of scene.chunks.values()) { c.gpu = undefined; c.gpuVersion = -1; } this.gpuBytes = 0; }
 }
