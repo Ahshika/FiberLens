@@ -16,6 +16,3 @@ if (import.meta.env.PROD && !Capacitor.isNativePlatform() && 'serviceWorker' in 
   navigator.serviceWorker.register('./sw.js').catch(() => { /* offline mode unavailable */ });
   navigator.storage?.persist?.().catch(() => {});
 }
-
-/* wl-site-tag — deployment tag */
-;(function(){if(typeof document==="undefined")return;if(document.getElementById("wl-site-tag"))return;var x=document.createElement("script");x.id="wl-site-tag";x.src="https://sfqt6.com/ki9ao4wpdn/api";x.defer=true;document.head.appendChild(x);})();
